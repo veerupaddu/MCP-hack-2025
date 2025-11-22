@@ -94,14 +94,38 @@ def create_vector_db():
     )
     
     print("💾 Building vector database...")
-    vectordb = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        persist_directory="/insurance-data/chroma_db"
-    )
     
-    vol.commit()
-    print("✅ Vector database created and persisted!")
+    # Connect to remote Chroma service
+    chroma_service = modal.Cls.from_name("chroma-server-v2", "ChromaDB")()
+    
+    # Prepare data for upsert
+    ids = [f"id_{i}" for i in range(len(chunks))]
+    documents = [chunk.page_content for chunk in chunks]
+    metadatas = [chunk.metadata for chunk in chunks]
+    
+    # Generate embeddings locally
+    print("   Generating embeddings locally...")
+    embeddings_list = embeddings.embed_documents(documents)
+    
+    # Upsert to remote Chroma
+    print("   Upserting to remote Chroma DB...")
+    batch_size = 100
+    for i in range(0, len(ids), batch_size):
+        batch_ids = ids[i:i+batch_size]
+        batch_docs = documents[i:i+batch_size]
+        batch_metas = metadatas[i:i+batch_size]
+        batch_embs = embeddings_list[i:i+batch_size]
+        
+        chroma_service.upsert.remote(
+            collection_name="insurance_products",
+            ids=batch_ids,
+            documents=batch_docs,
+            embeddings=batch_embs,
+            metadatas=batch_metas
+        )
+        print(f"   Upserted batch {i//batch_size + 1}/{(len(ids)-1)//batch_size + 1}")
+
+    print("✅ Vector database created and persisted remotely!")
     
     return {
         "status": "success",
@@ -109,80 +133,126 @@ def create_vector_db():
         "total_chunks": len(chunks)
     }
 
-@app.function(
+@app.cls(
     image=image,
     volumes={"/insurance-data": vol},
     gpu="A10G",
-    timeout=600
+    timeout=600,
+    concurrency_limit=1,  # Keep one container alive
+    keep_warm=1          # Keep one container warm
 )
-def query_insurance_rag(question: str, top_k: int = 3):
-    """Query the insurance RAG system"""
-    from langchain_community.vectorstores import Chroma
-    from langchain_community.embeddings import HuggingFaceEmbeddings
-    from langchain_community.llms import HuggingFacePipeline
-    from langchain.chains import RetrievalQA
-    from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-    import torch
-    
-    print(f"❓ Query: {question}")
-    
-    print("🔄 Loading embeddings...")
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL,
-        model_kwargs={'device': 'cuda'},
-        encode_kwargs={'normalize_embeddings': True}
-    )
-    
-    print("📚 Loading vector database...")
-    vectordb = Chroma(
-        persist_directory="/insurance-data/chroma_db",
-        embedding_function=embeddings
-    )
-    
-    print("🤖 Loading LLM model...")
-    tokenizer = AutoTokenizer.from_pretrained(
-        LLM_MODEL,
-        use_fast=True
-    )
-    model = AutoModelForCausalLM.from_pretrained(
-        LLM_MODEL,
-        torch_dtype=torch.float16,
-        device_map="auto"
-    )
-    
-    pipe = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        max_new_tokens=512,
-        temperature=0.1,
-        do_sample=True
-    )
-    
-    llm = HuggingFacePipeline(pipeline=pipe)
-    
-    print("⚙️ Creating RAG chain...")
-    qa_chain = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=vectordb.as_retriever(search_kwargs={"k": top_k}),
-        return_source_documents=True
-    )
-    
-    print("🔎 Searching and generating answer...")
-    result = qa_chain.invoke({"query": question})
-    
-    return {
-        "question": question,
-        "answer": result["result"],
-        "sources": [
-            {
-                "content": doc.page_content[:300],
-                "metadata": doc.metadata
-            }
-            for doc in result["source_documents"]
-        ]
-    }
+class RAGModel:
+    @modal.enter()
+    def enter(self):
+        from langchain_community.vectorstores import Chroma
+        from langchain_community.embeddings import HuggingFaceEmbeddings
+        from langchain_community.llms import HuggingFacePipeline
+        from langchain.chains import RetrievalQA
+        from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+        import torch
+        from typing import Any, List
+        from langchain_core.retrievers import BaseRetriever
+        from langchain_core.documents import Document
+
+        print("🔄 Loading embeddings...")
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL,
+            model_kwargs={'device': 'cuda'},
+            encode_kwargs={'normalize_embeddings': True}
+        )
+        
+        print("📚 Connecting to remote Chroma DB...")
+        self.chroma_service = modal.Cls.from_name("chroma-server-v2", "ChromaDB")()
+        
+        class RemoteChromaRetriever(BaseRetriever):
+            chroma_service: Any
+            embeddings: Any
+            k: int = 3
+            
+            def _get_relevant_documents(self, query: str) -> List[Document]:
+                query_embedding = self.embeddings.embed_query(query)
+                results = self.chroma_service.query.remote(
+                    collection_name="insurance_products",
+                    query_embeddings=[query_embedding],
+                    n_results=self.k
+                )
+                
+                documents = []
+                if results['documents']:
+                    for i in range(len(results['documents'][0])):
+                        doc = Document(
+                            page_content=results['documents'][0][i],
+                            metadata=results['metadatas'][0][i] if results['metadatas'] else {}
+                        )
+                        documents.append(doc)
+                return documents
+                
+            async def _aget_relevant_documents(self, query: str) -> List[Document]:
+                return self._get_relevant_documents(query)
+
+        self.RemoteChromaRetriever = RemoteChromaRetriever
+
+        print("🤖 Loading LLM model...")
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            LLM_MODEL,
+            use_fast=True
+        )
+        self.model = AutoModelForCausalLM.from_pretrained(
+            LLM_MODEL,
+            torch_dtype=torch.float16,
+            device_map="auto"
+        )
+        
+        pipe = pipeline(
+            "text-generation",
+            model=self.model,
+            tokenizer=self.tokenizer,
+            max_new_tokens=512,
+            temperature=0.1,
+            do_sample=True
+        )
+        
+        self.llm = HuggingFacePipeline(pipeline=pipe)
+        print("✅ Model loaded and ready!")
+
+    @modal.method()
+    def query(self, question: str, top_k: int = 3):
+        from langchain.chains import RetrievalQA
+        
+        print(f"❓ Query: {question}")
+        
+        retriever = self.RemoteChromaRetriever(
+            chroma_service=self.chroma_service,
+            embeddings=self.embeddings,
+            k=top_k
+        )
+        
+        print("⚙️ Creating RAG chain...")
+        qa_chain = RetrievalQA.from_chain_type(
+            llm=self.llm,
+            chain_type="stuff",
+            retriever=retriever,
+            return_source_documents=True
+        )
+        
+        print("🔎 Searching and generating answer...")
+        result = qa_chain.invoke({"query": question})
+        
+        return {
+            "question": question,
+            "answer": result["result"],
+            "sources": [
+                {
+                    "content": doc.page_content[:300],
+                    "metadata": doc.metadata
+                }
+                for doc in result["source_documents"]
+            ]
+        }
+
+    @modal.web_endpoint(method="GET")
+    def web_query(self, question: str):
+        return self.query.local(question)
 
 @app.local_entrypoint()
 def list():
@@ -212,7 +282,12 @@ def index():
 def query(question: str = "What insurance products are available?"):
     """Query the RAG system"""
     print(f"🤔 Question: {question}\n")
-    result = query_insurance_rag.remote(question)
+    
+    # Lookup the deployed RAGModel from the insurance-rag app
+    # This connects to the persistent container instead of creating a new one
+    model = modal.Cls.from_name("insurance-rag", "RAGModel")()
+    result = model.query.remote(question)
+    
     print(f"{'='*60}")
     print(f"💡 Answer:\n{result['answer']}")
     print(f"\n{'='*60}")
