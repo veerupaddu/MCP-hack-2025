@@ -5,14 +5,15 @@ app = modal.App("insurance-rag")
 # Reference your specific volume
 vol = modal.Volume.from_name("mcp-hack-ins-products", create_if_missing=True)
 
-# Model configuration
-LLM_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
+# Model configuration - UPDATED TO PHI-3
+LLM_MODEL = "microsoft/Phi-3-mini-4k-instruct"
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 
 # Build image with ALL required dependencies
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
+        "vllm==0.6.3.post1",  # Fast inference engine - NEW
         "langchain==0.3.7",
         "langchain-community==0.3.7",
         "langchain-text-splitters==0.3.2",
@@ -22,10 +23,7 @@ image = (
         "cryptography==43.0.3",
         "transformers==4.46.2",
         "torch==2.5.1",
-        "accelerate==1.1.1",
         "huggingface_hub==0.26.2",
-        "sentencepiece==0.2.0",  # Added for tokenizer
-        "protobuf==5.29.2"  # Required by sentencepiece
     )
 )
 
@@ -43,9 +41,9 @@ def list_files():
 @app.function(
     image=image,
     volumes={"/insurance-data": vol},
-    gpu="T4",
     timeout=900
 )
+
 def create_vector_db():
     """Create vector database from insurance PDFs"""
     from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
@@ -138,17 +136,13 @@ def create_vector_db():
     volumes={"/insurance-data": vol},
     gpu="A10G",
     timeout=600,
-    concurrency_limit=1,  # Keep one container alive
-    keep_warm=1          # Keep one container warm
+    max_containers=1,  # Keep one container alive
+    min_containers=1   # Keep one container warm
 )
 class RAGModel:
     @modal.enter()
     def enter(self):
-        from langchain_community.vectorstores import Chroma
         from langchain_community.embeddings import HuggingFaceEmbeddings
-        from langchain_community.llms import HuggingFacePipeline
-        from langchain.chains import RetrievalQA
-        from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
         import torch
         from typing import Any, List
         from langchain_core.retrievers import BaseRetriever
@@ -192,108 +186,48 @@ class RAGModel:
 
         self.RemoteChromaRetriever = RemoteChromaRetriever
 
-        print("🤖 Loading LLM model...")
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            LLM_MODEL,
-            use_fast=True
-        )
-        self.model = AutoModelForCausalLM.from_pretrained(
-            LLM_MODEL,
-            torch_dtype=torch.float16,
-            device_map="auto"
+        print("🤖 Loading LLM model with vLLM...")
+        from vllm import LLM, SamplingParams
+        
+        # Initialize vLLM engine (much faster than HuggingFace pipeline)
+        self.llm_engine = LLM(
+            model=LLM_MODEL,
+            tensor_parallel_size=1,
+            gpu_memory_utilization=0.85,
+            max_model_len=4096,  # Phi-3 supports 4k context
+            trust_remote_code=True  # Required for Phi-3
         )
         
-        pipe = pipeline(
-            "text-generation",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            max_new_tokens=512,
-            temperature=0.1,
-            do_sample=True
+        # Configure sampling parameters for generation
+        self.sampling_params = SamplingParams(
+            temperature=0.7,
+            max_tokens=256,  # Reduced for faster responses
+            top_p=0.9,
+            stop=["<|end|>", "\n\nQuestion:", "\n\nContext:"]  # Stop tokens
         )
         
-        self.llm = HuggingFacePipeline(pipeline=pipe)
-        print("✅ Model loaded and ready!")
+        print("✅ vLLM model loaded and ready!")
 
     @modal.method()
-    def query(self, question: str, top_k: int = 3):
-        from langchain.chains import RetrievalQA
+    def query(self, question: str, top_k: int = 2):
+        import time
+        start_time = time.time()
         
         print(f"❓ Query: {question}")
         
+        # Retrieve relevant documents
+        retrieval_start = time.time()
         retriever = self.RemoteChromaRetriever(
             chroma_service=self.chroma_service,
             embeddings=self.embeddings,
             k=top_k
         )
+        docs = retriever.get_relevant_documents(question)
+        retrieval_time = time.time() - retrieval_start
         
-        print("⚙️ Creating RAG chain...")
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=retriever,
-            return_source_documents=True
-        )
+        # Build context from retrieved documents
+        context = "\n\n".join([doc.page_content for doc in docs])
         
-        print("🔎 Searching and generating answer...")
-        result = qa_chain.invoke({"query": question})
-        
-        return {
-            "question": question,
-            "answer": result["result"],
-            "sources": [
-                {
-                    "content": doc.page_content[:300],
-                    "metadata": doc.metadata
-                }
-                for doc in result["source_documents"]
-            ]
-        }
-
-    @modal.web_endpoint(method="GET")
-    def web_query(self, question: str):
-        return self.query.local(question)
-
-@app.local_entrypoint()
-def list():
-    """List files in volume"""
-    print("📁 Listing files in mcp-hack-ins-products volume...")
-    files = list_files.remote()
-    print(f"\n✅ Found {len(files)} files:")
-    for f in files:
-        print(f"  📄 {f}")
-
-@app.local_entrypoint()
-def index():
-    """Create vector database"""
-    print("🚀 Starting vector database creation...")
-    result = create_vector_db.remote()
-    print(f"\n{'='*60}")
-    print(f"Status: {result['status']}")
-    if result['status'] == 'success':
-        print(f"Documents processed: {result['total_documents']}")
-        print(f"Text chunks created: {result['total_chunks']}")
-        print("✅ Vector database is ready for queries!")
-    else:
-        print(f"❌ Error: {result['message']}")
-    print(f"{'='*60}")
-
-@app.local_entrypoint()
-def query(question: str = "What insurance products are available?"):
-    """Query the RAG system"""
-    print(f"🤔 Question: {question}\n")
-    
-    # Lookup the deployed RAGModel from the insurance-rag app
-    # This connects to the persistent container instead of creating a new one
-    model = modal.Cls.from_name("insurance-rag", "RAGModel")()
-    result = model.query.remote(question)
-    
-    print(f"{'='*60}")
-    print(f"💡 Answer:\n{result['answer']}")
-    print(f"\n{'='*60}")
-    print(f"📖 Sources ({len(result['sources'])}):")
-    for i, source in enumerate(result['sources'], 1):
-        print(f"\n  [{i}] {source['metadata'].get('source', 'Unknown')}")
-        print(f"      Page: {source['metadata'].get('page', 'N/A')}")
-        print(f"      Preview: {source['content'][:150]}...")
-    print(f"{'='*60}")
+        # Create prompt for Phi-3 (using its chat template)
+        prompt = f"""<|system|>
+You are a helpful AI assistant that answers questions about insurance products based on the provided context. Be concise and accurate.<|end|>

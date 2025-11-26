@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant User
+    participant Modal
+    participant RAGModel
+    participant ChromaDB
+    participant LLM as Mistral-7B
+
+    User->>Modal: Ask question
+    Modal->>RAGModel: Initialize (warm container)
+    
+    Note over RAGModel: Load models on GPU
+    
+    RAGModel->>ChromaDB: Search for relevant docs
+    ChromaDB-->>RAGModel: Return top 3 documents
+    
+    RAGModel->>LLM: Generate answer with context
+    LLM-->>RAGModel: Generated answer
+    
+    RAGModel-->>User: Answer + Sources
