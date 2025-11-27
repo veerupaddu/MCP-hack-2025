@@ -23,32 +23,59 @@ VOLUME_PATH = "/data"
     max_containers=100,
 )
 def convert_to_csv(file_path: str) -> dict:
-    """Converts a single Excel file to CSV and saves it in a 'csv' subfolder."""
+    """Converts a single Excel file to CSV and saves it in a 'csv' subfolder with a human-readable name."""
     import pandas as pd
+    import re
+    
     try:
-        # Determine output path
+        # Determine directory
         directory, filename = os.path.split(file_path)
         name, ext = os.path.splitext(filename)
         
         if ext.lower() not in ['.xls', '.xlsx']:
             return {"file": file_path, "status": "skipped", "reason": "Not an Excel file"}
             
-        # Create 'csv' subfolder in the same directory as the source file
+        # Create 'csv' subfolder
         csv_dir = os.path.join(directory, "csv")
         os.makedirs(csv_dir, exist_ok=True)
+
+        # 1. Extract Title for Filename
+        # Read first few rows to find a title
+        try:
+            df_meta = pd.read_excel(file_path, header=None, nrows=10)
+            title = None
+            # Search for the first long string which is likely the title
+            for val in df_meta.values.flatten():
+                if isinstance(val, str) and len(val) > 5:
+                    title = val
+                    break
+            
+            if title:
+                # Sanitize title
+                # Remove invalid chars
+                clean_title = re.sub(r'[\\/*?:"<>|]', "", title)
+                # Replace whitespace with underscores
+                clean_title = re.sub(r'\s+', "_", clean_title)
+                # Limit length and strip
+                clean_title = clean_title.strip()[:100]
+                
+                # Use ID + Title to ensure uniqueness and readability
+                csv_filename = f"{name}_{clean_title}.csv"
+            else:
+                csv_filename = f"{name}.csv"
+                
+        except Exception as e:
+            print(f"Warning: Could not extract title from {filename}: {e}")
+            csv_filename = f"{name}.csv"
         
-        csv_filename = f"{name}.csv"
         csv_path = os.path.join(csv_dir, csv_filename)
         
         # Check if CSV already exists
         if os.path.exists(csv_path):
-             return {"file": file_path, "status": "skipped", "reason": "CSV already exists"}
+             return {"file": file_path, "status": "skipped", "reason": "CSV already exists", "csv_path": csv_path}
 
-        # Read Excel file
-        # Using 'None' for sheet_name to read all sheets if multiple exist, 
-        # but for simplicity/standardization, we'll default to the first sheet 
-        # or concatenate if needed. Let's stick to the first sheet for now 
-        # as these stats usually have the main data there.
+        # 2. Convert Content
+        # Read full file
         df = pd.read_excel(file_path)
         
         # Save as CSV

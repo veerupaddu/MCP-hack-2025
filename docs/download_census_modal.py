@@ -25,7 +25,7 @@ VOLUME_PATH = "/data"
     volumes={VOLUME_PATH: volume},
     timeout=600,
     retries=3,
-    concurrency_limit=500,  # Run up to 500 downloads in parallel
+    max_containers=500,  # Run up to 500 downloads in parallel
     cpu=1.0,  # 1 CPU is enough for network I/O
 )
 def download_file(url: str) -> dict:
