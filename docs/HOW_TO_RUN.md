@@ -145,9 +145,6 @@ modal app logs mcp-hack::finetune-phi3-modal
 
 ### If You Need to Regenerate Data
 ```bash
-# Clear existing dataset
-./venv/bin/modal run docs/clear_dataset.py
-
 # Regenerate with new logic
 ./venv/bin/modal run --detach docs/prepare_finetune_data.py
 ```
