@@ -35,7 +35,7 @@ Run the fine-tuning job on Modal with H200 GPU:
 cd /Users/veeru/agents/mcp-hack
 
 # Start fine-tuning in detached mode
-./venv/bin/modal run --detach docs/finetune_modal.py
+./venv/bin/modal run --detach src/finetune/finetune_modal.py
 ```
 
 **What happens:**
@@ -57,7 +57,7 @@ modal app logs mcp-hack::finetune-phi3-modal
 After training completes, test the model:
 
 ```bash
-./venv/bin/modal run docs/eval_finetuned.py
+./venv/bin/modal run src/finetune/eval_finetuned.py
 ```
 
 This will run sample questions and show the model's answers.
@@ -70,12 +70,12 @@ Deploy the inference API:
 
 **Option A: GPU Endpoint (A10G)**
 ```bash
-./venv/bin/modal deploy docs/api_endpoint.py
+./venv/bin/modal deploy src/finetune/api_endpoint.py
 ```
 
 **Option B: CPU Endpoint**
 ```bash
-./venv/bin/modal deploy docs/api_endpoint_cpu.py
+./venv/bin/modal deploy src/finetune/api_endpoint_cpu.py
 ```
 
 **Get the endpoint URL:**
@@ -102,16 +102,16 @@ curl -X POST https://YOUR-MODAL-URL/ask \
 ## 📁 Key Files
 
 ### Data Processing
-- `docs/prepare_finetune_data.py` - Generates dataset from CSV files
+- `src/finetune/prepare_finetune_data.py` - Generates dataset from CSV files
 - `docs/clean_sample.py` - Local testing script for data cleaning
 
 ### Model Training
-- `docs/finetune_modal.py` - Fine-tuning script (H200 GPU)
-- `docs/eval_finetuned.py` - Evaluation script
+- `src/finetune/finetune_modal.py` - Fine-tuning script (H200 GPU)
+- `src/finetune/eval_finetuned.py` - Evaluation script
 
 ### API Deployment
-- `docs/api_endpoint.py` - GPU inference endpoint (A10G)
-- `docs/api_endpoint_cpu.py` - CPU inference endpoint
+- `src/finetune/api_endpoint.py` - GPU inference endpoint (A10G)
+- `src/finetune/api_endpoint_cpu.py` - CPU inference endpoint (when created)
 
 ### Documentation
 - `diagrams/finetuning.svg` - Visual pipeline diagram
@@ -146,7 +146,7 @@ modal app logs mcp-hack::finetune-phi3-modal
 ### If You Need to Regenerate Data
 ```bash
 # Regenerate with new logic
-./venv/bin/modal run --detach docs/prepare_finetune_data.py
+./venv/bin/modal run --detach src/finetune/prepare_finetune_data.py
 ```
 
 ### View Volume Contents
@@ -190,7 +190,7 @@ modal volume list
 ```
 
 **Issue**: "Out of memory during training"
-- Reduce `per_device_train_batch_size` in `finetune_modal.py`
+- Reduce `per_device_train_batch_size` in `src/finetune/finetune_modal.py`
 - Current: 2 (already optimized for H200)
 
 **Issue**: "Model not loading in API"

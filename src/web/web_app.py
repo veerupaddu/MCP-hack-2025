@@ -70,7 +70,43 @@ def find_modal_command():
     return [sys.executable, "-m", "modal"]
 
 def query_rag(question: str):
-    """Query the RAG system via Modal"""
+    """Query the RAG system via Modal or Nebius HTTP service"""
+    # Check if RAG_SERVICE_URL is set (Nebius deployment)
+    rag_service_url = os.getenv("RAG_SERVICE_URL")
+    
+    if rag_service_url:
+        # Use HTTP API (Nebius deployment)
+        try:
+            import requests
+            response = requests.post(
+                f"{rag_service_url}/query",
+                json={"question": question},
+                timeout=180
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            # Convert to expected format
+            return {
+                "success": data.get("success", True),
+                "answer": data.get("answer", ""),
+                "retrieval_time": data.get("retrieval_time", 0),
+                "generation_time": data.get("generation_time", 0),
+                "sources": data.get("sources", []),
+                "raw_output": str(data)
+            }
+        except ImportError:
+            return {
+                "success": False,
+                "error": "requests library not installed. Install with: pip install requests"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Error connecting to RAG service: {str(e)}"
+            }
+    
+    # Fall back to Modal (original deployment)
     modal_cmd = find_modal_command()
     
     try:
