@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1400">
+  <defs>
+    <style>
+      .title { font: bold 24px sans-serif; fill: #1a1a1a; }
+      .subtitle { font: bold 18px sans-serif; fill: #2563eb; }
+      .text { font: 14px sans-serif; fill: #374151; }
+      .small { font: 12px sans-serif; fill: #6b7280; }
+      .code { font: 12px monospace; fill: #059669; }
+      .box { fill: #f3f4f6; stroke: #d1d5db; stroke-width: 2; }
+      .highlight { fill: #dbeafe; stroke: #2563eb; stroke-width: 2; }
+      .problem { fill: #fee2e2; stroke: #ef4444; stroke-width: 2; }
+      .arrow { fill: none; stroke: #6b7280; stroke-width: 2; marker-end: url(#arrowhead); }
+      .arrow-highlight { fill: none; stroke: #2563eb; stroke-width: 3; marker-end: url(#arrowhead-blue); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#6b7280" />
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#2563eb" />
+    </marker>
+  </defs>
+  
+  <!-- Title -->
+  <text x="600" y="40" text-anchor="middle" class="title">Fine-tuning Pipeline: CSV → Trained Model</text>
+  
+  <!-- Step 1: Raw Data -->
+  <rect x="50" y="80" width="300" height="140" class="box" rx="8"/>
+  <text x="200" y="105" text-anchor="middle" class="subtitle">1. Raw Data Sources</text>
+  <text x="70" y="135" class="text">📁 Census CSVs (6,838 files)</text>
+  <text x="70" y="160" class="text">📁 Economy/Labor CSVs (50 files)</text>
+  <text x="70" y="185" class="small">• Multi-row headers with metadata</text>
+  <text x="70" y="205" class="small">• Codes (13103) instead of names</text>
+  
+  <!-- Step 2: CSV Structure -->
+  <rect x="400" y="80" width="350" height="140" class="box" rx="8"/>
+  <text x="575" y="105" text-anchor="middle" class="subtitle">2. CSV Structure</text>
+  <text x="420" y="130" class="code">Row 0: Title, Unnamed:1, Unnamed:2...</text>
+  <text x="420" y="150" class="code">Row 1-7: Metadata, notes...</text>
+  <text x="420" y="170" class="code">Row 8: Code, Name, Population...</text>
+  <text x="420" y="190" class="code">Row 9: 13103, Minato-ku, 260071...</text>
+  <text x="420" y="210" class="small">⚠️ Real data starts at Row 8+</text>
+  
+  <!-- Arrow 1 to 2 -->
+  <path d="M 350 150 L 395 150" class="arrow"/>
+  
+  <!-- Step 3: Smart Parser -->
+  <rect x="850" y="80" width="300" height="140" class="highlight" rx="8"/>
+  <text x="1000" y="105" text-anchor="middle" class="subtitle">3. Smart Parser</text>
+  <text x="870" y="130" class="text">📝 prepare_finetune_data.py</text>
+  <text x="870" y="155" class="small">✓ Skip rows with "Unnamed"</text>
+  <text x="870" y="175" class="small">✓ Detect header row (Row 8)</text>
+  <text x="870" y="195" class="small">✓ Clean values (remove codes)</text>
+  <text x="870" y="215" class="small">✓ Filter valid columns</text>
+  
+  <!-- Arrow 2 to 3 -->
+  <path d="M 750 150 L 845 150" class="arrow-highlight"/>
+  
+  <!-- Step 4: Data Extraction -->
+  <rect x="50" y="270" width="300" height="160" class="box" rx="8"/>
+  <text x="200" y="295" text-anchor="middle" class="subtitle">4. Data Extraction</text>
+  <text x="70" y="320" class="text">For each CSV file:</text>
+  <text x="70" y="345" class="small">1. Read file → find header row</text>
+  <text x="70" y="365" class="small">2. Extract data rows (9+)</text>
+  <text x="70" y="385" class="small">3. Sample 500 rows per file</text>
+  <text x="70" y="405" class="small">4. Generate QA pairs</text>
+  <text x="70" y="425" class="small">Result: ~1,350 training samples</text>
+  
+  <!-- Arrow 3 to 4 -->
+  <path d="M 1000 220 L 1000 340 L 355 340" class="arrow"/>
+  
+  <!-- Step 5: QA Generation (Current - Problem) -->
+  <rect x="400" y="270" width="350" height="160" class="problem" rx="8"/>
+  <text x="575" y="295" text-anchor="middle" class="subtitle">5. QA Generation (Current)</text>
+  <text x="420" y="320" class="text">❌ Problem: Uses random columns</text>
+  <text x="420" y="345" class="code">row_label = "13103" (code!)</text>
+  <text x="420" y="365" class="code">column = "Members per household"</text>
+  <text x="420" y="385" class="code">value = "2.56"</text>
+  <text x="420" y="410" class="small">Q: "What is X for 13103?"</text>
+  <text x="420" y="425" class="small">A: "The X for 13103 is 2.56."</text>
+  
+  <!-- Arrow 4 to 5 -->
+  <path d="M 350 350 L 395 350" class="arrow"/>
+  
+  <!-- Step 6: Better QA Generation -->
+  <rect x="850" y="270" width="300" height="160" class="highlight" rx="8"/>
+  <text x="1000" y="295" text-anchor="middle" class="subtitle">6. Better Approach</text>
+  <text x="870" y="320" class="text">✓ Always use name column</text>
+  <text x="870" y="345" class="code">row_label = "Minato-ku, Tokyo"</text>
+  <text x="870" y="365" class="code">column = "Members per household"</text>
+  <text x="870" y="385" class="code">value = "2.56"</text>
+  <text x="870" y="410" class="small">Q: "What is X for Minato-ku?"</text>
+  <text x="870" y="425" class="small">A: "The X for Minato-ku is 2.56."</text>
+  
+  <!-- Arrow 5 to 6 (improvement) -->
+  <path d="M 750 350 L 845 350" class="arrow" stroke-dasharray="5,5"/>
+  <text x="797" y="340" class="small" fill="#ef4444">needs fix</text>
+  
+  <!-- Step 7: JSONL Format -->
+  <rect x="50" y="480" width="700" height="120" class="box" rx="8"/>
+  <text x="400" y="505" text-anchor="middle" class="subtitle">7. Training Data (JSONL Format)</text>
+  <text x="70" y="535" class="code">{</text>
+  <text x="90" y="555" class="code">"instruction": "What is the Members per household for 1231?",</text>
+  <text x="90" y="575" class="code">"input": "Context: Japan Census data...",</text>
+  <text x="90" y="595" class="code">"output": "The Members per household for 1231 is 3.56."</text>
+  <text x="70" y="615" class="code">}</text>
+  
+  <!-- Arrow 5/6 to 7 -->
+  <path d="M 575 430 L 575 475" class="arrow"/>
+  
+  <!-- Step 8: Fine-tuning -->
+  <rect x="850" y="480" width="300" height="120" class="highlight" rx="8"/>
+  <text x="1000" y="505" text-anchor="middle" class="subtitle">8. Fine-tuning</text>
+  <text x="870" y="530" class="text">📝 finetune_modal.py</text>
+  <text x="870" y="555" class="small">• Model: Phi-3-mini-4k-instruct</text>
+  <text x="870" y="575" class="small">• GPU: H200 (90 mins)</text>
+  <text x="870" y="595" class="small">• Method: LoRA + Unsloth</text>
+  
+  <!-- Arrow 7 to 8 -->
+  <path d="M 750 540 L 845 540" class="arrow-highlight"/>
+  
+  <!-- Step 9: Trained Model -->
+  <rect x="50" y="650" width="300" height="100" class="highlight" rx="8"/>
+  <text x="200" y="675" text-anchor="middle" class="subtitle">9. Fine-tuned Model</text>
+  <text x="70" y="700" class="text">🎯 Saved to Modal Volume:</text>
+  <text x="70" y="720" class="code">model-checkpoints/</text>
+  <text x="70" y="740" class="small">Ready for inference!</text>
+  
+  <!-- Arrow 8 to 9 -->
+  <path d="M 1000 600 L 1000 700 L 355 700" class="arrow-highlight"/>
+  
+  <!-- Step 10: Inference API -->
+  <rect x="400" y="650" width="350" height="100" class="box" rx="8"/>
+  <text x="575" y="675" text-anchor="middle" class="subtitle">10. Inference API</text>
+  <text x="420" y="700" class="text">📝 api_endpoint.py (GPU - A10G)</text>
+  <text x="420" y="720" class="text">📝 api_endpoint_cpu.py (CPU)</text>
+  <text x="420" y="740" class="small">POST /ask → Get answers</text>
+  
+  <!-- Arrow 9 to 10 -->
+  <path d="M 350 700 L 395 700" class="arrow"/>
+  
+  <!-- Step 11: User Query -->
+  <rect x="850" y="650" width="300" height="100" class="box" rx="8"/>
+  <text x="1000" y="675" text-anchor="middle" class="subtitle">11. User Query</text>
+  <text x="870" y="700" class="text">Q: "Population of Tokyo?"</text>
+  <text x="870" y="720" class="text">A: "The population for</text>
+  <text x="920" y="740" class="text">13100 is 13,960,000."</text>
+  
+  <!-- Arrow 10 to 11 -->
+  <path d="M 750 700 L 845 700" class="arrow"/>
+  
+  <!-- Summary Box -->
+  <rect x="50" y="800" width="1100" height="140" class="highlight" rx="8"/>
+  <text x="600" y="830" text-anchor="middle" class="subtitle">📊 Pipeline Summary</text>
+  <text x="70" y="860" class="text">Input: 6,888 CSV files with complex headers → Output: Fine-tuned model that answers questions</text>
+  <text x="70" y="885" class="text">✓ Smart header detection (skip metadata rows)</text>
+  <text x="70" y="905" class="text">✓ QA pair generation (1,350 samples)</text>
+  <text x="70" y="925" class="text">⚠️ Current issue: Uses codes (13103) instead of names (Minato-ku)</text>
+  
+  <!-- Key Metrics -->
+  <rect x="50" y="980" width="550" height="120" class="box" rx="8"/>
+  <text x="325" y="1005" text-anchor="middle" class="subtitle">📈 Current Metrics</text>
+  <text x="70" y="1030" class="text">• Total CSV files: 6,888</text>
+  <text x="70" y="1050" class="text">• Training samples: 1,351</text>
+  <text x="70" y="1070" class="text">• Validation samples: 151</text>
+  <text x="70" y="1090" class="text">• Training time: ~90 minutes (H200)</text>
+  
+  <!-- Issues & Solutions -->
+  <rect x="650" y="980" width="500" height="120" class="problem" rx="8"/>
+  <text x="900" y="1005" text-anchor="middle" class="subtitle">⚠️ Issues &amp; Solutions</text>
+  <text x="670" y="1030" class="text">Issue: Row labels use codes (13103)</text>
+  <text x="670" y="1050" class="text">Solution: Always use name column</text>
+  <text x="670" y="1070" class="text">Issue: Only 1,351 samples (too small)</text>
+  <text x="670" y="1090" class="text">Solution: Fix census file parsing</text>
+  
+  <!-- Footer -->
+  <text x="600" y="1150" text-anchor="middle" class="small">Files: prepare_finetune_data.py → finetune_modal.py → api_endpoint.py</text>
+  <text x="600" y="1170" text-anchor="middle" class="small">Modal Volumes: census-data, economy-labor-data, finetune-dataset, model-checkpoints</text>
+</svg>

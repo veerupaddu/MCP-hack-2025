@@ -42,60 +42,157 @@ def list_csv_files() -> list:
         "/data/census": vol_census,
         "/data/economy": vol_economy
     },
-    timeout=600,
-    max_containers=100  # Parallel processing
+    timeout=1200,  # 20 minutes for complex files
+    max_containers=100
 )
 def process_file(file_info: dict) -> list:
-    """Process a single CSV file and return a list of QA pairs."""
+    """Process a single CSV file with robust parsing logic."""
     import pandas as pd
-    import os
+    import re
+    import random
     
     file_path = file_info["path"]
     source_name = file_info["source"]
     data_points = []
     
+    def clean_value(val):
+        """Clean and normalize values"""
+        if pd.isna(val):
+            return None
+        val_str = str(val).strip()
+        # Remove leading codes like "13103_"
+        val_str = re.sub(r'^\d+_', '', val_str)
+        # Remove numpy type wrappers
+        val_str = re.sub(r'^np\.(int|float)\d*\((.+)\)$', r'\2', val_str)
+        return val_str if val_str and val_str.lower() not in ['nan', 'none', ''] else None
+    
     try:
-        # Extract title
+        # Extract title from filename
         filename = os.path.basename(file_path)
         filename_no_ext = os.path.splitext(filename)[0]
         parts = filename_no_ext.split('_', 1)
-        if len(parts) > 1:
-            title = parts[1].replace('_', ' ')
-        else:
-            title = filename_no_ext
-            
-        # Read CSV
+        title = parts[1].replace('_', ' ') if len(parts) > 1 else filename_no_ext
+        
+        # Strategy 1: Try Cross-Tabulation Parsing (Row 7 + Row 9 headers)
+        # This is common in census data
         try:
-            df = pd.read_csv(file_path, low_memory=False)
+            df_headers = pd.read_csv(file_path, header=None, nrows=15, low_memory=False)
+            
+            # Check if Row 7 and Row 9 look like headers
+            if len(df_headers) >= 10:
+                row7 = df_headers.iloc[7]
+                row9 = df_headers.iloc[9]
+                
+                # Heuristic: Row 9 has metadata in first few cols, Row 7 has destinations in later cols
+                if pd.notna(row9[0]) and pd.notna(row7[4]):
+                    headers = []
+                    # Cols 0-3 from Row 9
+                    for i in range(min(4, len(row9))):
+                        val = clean_value(row9[i])
+                        headers.append(val if val else f"Meta_{i}")
+                    
+                    # Cols 4+ from Row 7
+                    for i in range(4, len(row7)):
+                        val = clean_value(row7[i])
+                        headers.append(f"Dest_{val}" if val else f"Col_{i}")
+                    
+                    # Read data skipping metadata
+                    df = pd.read_csv(file_path, header=None, skiprows=10, low_memory=False)
+                    
+                    # Adjust header length
+                    if len(df.columns) < len(headers):
+                        headers = headers[:len(df.columns)]
+                    else:
+                        headers += [f"Extra_{i}" for i in range(len(headers), len(df.columns))]
+                    
+                    df.columns = headers
         except:
-            return []
+            df = None
+
+        # Strategy 2: Fallback to Smart Header Detection if Strategy 1 failed
+        if df is None or df.empty:
+            df_raw = pd.read_csv(file_path, header=None, low_memory=False)
             
-        if df.empty or len(df.columns) < 2:
-            return []
+            # Find header row
+            header_row_idx = None
+            data_start_idx = 0
             
-        # Smart sampling: Use 200 rows per file (balance between coverage and memory)
-        # This gives ~1.4M QA pairs total (6888 files × 200 rows)
-        sample_rows = 500
+            for i in range(min(20, len(df_raw))):
+                row = df_raw.iloc[i]
+                non_null_count = row.count()
+                if non_null_count < len(df_raw.columns) * 0.3: continue
+                
+                # Skip if too many Unnamed
+                unnamed_count = sum(1 for val in row if pd.notna(val) and "Unnamed" in str(val))
+                if unnamed_count > non_null_count * 0.3: continue
+                
+                # Check for string headers
+                header_like = sum(1 for val in row if pd.notna(val) and not str(val).replace('.','').isdigit())
+                if header_like >= non_null_count * 0.5:
+                    header_row_idx = i
+                    data_start_idx = i + 1
+                    break
+            
+            if header_row_idx is not None:
+                headers = df_raw.iloc[header_row_idx].tolist()
+                df = df_raw.iloc[data_start_idx:].reset_index(drop=True)
+                df.columns = headers
+            else:
+                return []
+
+        # Common Cleaning Steps
+        
+        # Deduplicate headers
+        unique_headers = []
+        seen_headers = {}
+        for h in df.columns:
+            h_clean = clean_value(h) or "Unknown"
+            if h_clean in seen_headers:
+                seen_headers[h_clean] += 1
+                unique_headers.append(f"{h_clean}_{seen_headers[h_clean]}")
+            else:
+                seen_headers[h_clean] = 0
+                unique_headers.append(h_clean)
+        df.columns = unique_headers
+        
+        # Filter valid columns
+        valid_cols = [c for c in df.columns if "Unknown" not in c and "Unnamed" not in c]
+        if len(valid_cols) < 2: return []
+        df = df[valid_cols]
+        
+        # Clean values
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].apply(clean_value)
+        
+        df = df.dropna(how='all')
+        if len(df) == 0: return []
+
+        # Generate QA Pairs
+        # Sample 200 rows per file
+        sample_rows = 200
         if len(df) > sample_rows:
             df_sample = df.sample(sample_rows, random_state=42)
         else:
             df_sample = df
-            
-        label_col = df.columns[0]
+        
+        label_col = df.columns[0] # Assume first column is the label (Area Name)
         value_cols = df.columns[1:]
         
         for _, row in df_sample.iterrows():
-            row_label = str(row[label_col])
+            row_label = row[label_col]
+            if not row_label: continue
             
-            if len(value_cols) > 0:
+            # Create 3 QA pairs per row
+            for _ in range(3):
+                if len(value_cols) == 0: break
                 col = random.choice(value_cols)
-                val = str(row[col])
+                val = row[col]
                 
-                if val.lower() in ['nan', '', 'none', '-']:
-                    continue
-                    
-                question = f"What is the {col} for {row_label} in the dataset '{title}'?"
-                answer = f"According to the '{title}' dataset, the {col} for {row_label} is {val}."
+                if not val: continue
+                
+                question = f"What is the {col} for {row_label} in the '{title}' dataset?"
+                answer = f"According to '{title}', the {col} for {row_label} is {val}."
                 
                 entry = {
                     "instruction": question,
@@ -103,11 +200,10 @@ def process_file(file_info: dict) -> list:
                     "output": answer
                 }
                 data_points.append(entry)
-                
+                        
     except Exception as e:
-        # print(f"Error in {file_path}: {e}")
         pass
-        
+    
     return data_points
 
 @app.local_entrypoint()
@@ -118,8 +214,8 @@ def main():
     files = list_csv_files.remote()
     print(f"Found {len(files)} files. Starting parallel processing...")
     
-    # Process in batches and save incrementally to avoid OOM
-    batch_size = 1000  # With 200 rows/file, this is ~200K data points per batch
+    # Process in batches
+    batch_size = 1000
     total_train = 0
     total_val = 0
     
@@ -135,14 +231,16 @@ def main():
         
         print(f"Batch generated {len(batch_data)} data points")
         
-        # Shuffle and split this batch
-        import random
+        if not batch_data:
+            continue
+        
+        # Shuffle and split
         random.shuffle(batch_data)
         split_idx = int(len(batch_data) * 0.9)
         train_batch = batch_data[:split_idx]
         val_batch = batch_data[split_idx:]
         
-        # Append to files (streaming write)
+        # Save
         save_batch.remote(train_batch, val_batch, batch_start == 0)
         
         total_train += len(train_batch)
@@ -159,19 +257,15 @@ def main():
 )
 def save_batch(train_data, val_data, is_first_batch):
     import json
-    import os
     
-    mode = 'w' if is_first_batch else 'a'  # Overwrite first batch, append rest
+    mode = 'w' if is_first_batch else 'a'
     
-    train_path = "/data/dataset/train.jsonl"
-    val_path = "/data/dataset/val.jsonl"
-    
-    with open(train_path, mode, encoding='utf-8') as f:
+    with open("/data/dataset/train.jsonl", mode, encoding='utf-8') as f:
         for entry in train_data:
             json.dump(entry, f, ensure_ascii=False)
             f.write('\n')
     
-    with open(val_path, mode, encoding='utf-8') as f:
+    with open("/data/dataset/val.jsonl", mode, encoding='utf-8') as f:
         for entry in val_data:
             json.dump(entry, f, ensure_ascii=False)
             f.write('\n')
