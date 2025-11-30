@@ -31,7 +31,6 @@ This directory contains all project documentation.
 - **[STRUCTURE.md](STRUCTURE.md)** - Project structure overview
 - **[TESTING.md](TESTING.md)** - Testing guide
 - **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Migration guide
-- **[VLLM_MIGRATION.md](VLLM_MIGRATION.md)** - vLLM migration guide
 - **[NEXT_STEPS.md](NEXT_STEPS.md)** - Next steps and roadmap
 
 ### Agent Design
