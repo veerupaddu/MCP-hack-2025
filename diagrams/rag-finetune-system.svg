@@ -1,0 +1,216 @@
+<svg viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font: bold 28px sans-serif; fill: #1a1a1a; }
+      .subtitle { font: 16px sans-serif; fill: #666; }
+      .section-title { font: bold 15px sans-serif; fill: white; }
+      .box-text { font: 13px sans-serif; fill: #1a1a1a; }
+      .label { font: 11px sans-serif; fill: #666; }
+      .metric { font: 12px monospace; fill: #059669; font-weight: bold; }
+      
+      /* Component styles */
+      .user-box { fill: #e0f2fe; stroke: #0284c7; stroke-width: 2; }
+      .api-box { fill: #ddd6fe; stroke: #7c3aed; stroke-width: 2; }
+      .modal-box { fill: #fef3c7; stroke: #d97706; stroke-width: 2; }
+      .rag-box { fill: #d1fae5; stroke: #059669; stroke-width: 3; }
+      .finetune-box { fill: #fecaca; stroke: #dc2626; stroke-width: 3; }
+      .data-box { fill: #e0e7ff; stroke: #4f46e5; stroke-width: 2; }
+      .storage-box { fill: #f3f4f6; stroke: #6b7280; stroke-width: 2; }
+      
+      /* Arrow styles */
+      .arrow-rag { stroke: #059669; stroke-width: 3; fill: none; }
+      .arrow-finetune { stroke: #dc2626; stroke-width: 3; fill: none; }
+      .arrow-data { stroke: #4f46e5; stroke-width: 3; fill: none; }
+      .arrow-api { stroke: #7c3aed; stroke-width: 2; fill: none; }
+    </style>
+    
+    <!-- Arrow markers -->
+    <marker id="arrow-rag" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#059669"/>
+    </marker>
+    <marker id="arrow-finetune" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-data" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#4f46e5"/>
+    </marker>
+    <marker id="arrow-api" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#7c3aed"/>
+    </marker>
+    
+    <!-- Gradient backgrounds -->
+    <linearGradient id="grad-rag" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#d1fae5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a7f3d0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-finetune" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fecaca;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fca5a5;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Title -->
+  <text x="700" y="40" class="title" text-anchor="middle">RAG &amp; Fine-Tuning System Architecture</text>
+  <text x="700" y="65" class="subtitle" text-anchor="middle">vLLM-Optimized High-Performance AI System</text>
+
+  <!-- ========== TOP LAYER: User &amp; API ========== -->
+  
+  <!-- Users -->
+  <rect x="50" y="100" width="180" height="100" class="user-box" rx="12"/>
+  <rect x="50" y="100" width="180" height="40" fill="#0284c7" rx="12"/>
+  <text x="140" y="125" class="section-title" text-anchor="middle">👥 USERS</text>
+  <text x="140" y="160" class="box-text" text-anchor="middle">Web Interface</text>
+  <text x="140" y="180" class="box-text" text-anchor="middle">API Clients</text>
+
+  <!-- FastAPI Layer -->
+  <rect x="280" y="100" width="220" height="100" class="api-box" rx="12"/>
+  <rect x="280" y="100" width="220" height="40" fill="#7c3aed" rx="12"/>
+  <text x="390" y="125" class="section-title" text-anchor="middle">⚡ FASTAPI LAYER</text>
+  <text x="390" y="160" class="box-text" text-anchor="middle">POST /query</text>
+  <text x="390" y="180" class="box-text" text-anchor="middle">Async handlers</text>
+
+  <!-- Modal Infrastructure -->
+  <rect x="550" y="100" width="280" height="100" class="modal-box" rx="12"/>
+  <rect x="550" y="100" width="280" height="40" fill="#d97706" rx="12"/>
+  <text x="690" y="125" class="section-title" text-anchor="middle">☁️ MODAL INFRASTRUCTURE</text>
+  <text x="690" y="160" class="box-text" text-anchor="middle">GPU Containers (A10G)</text>
+  <text x="690" y="180" class="box-text" text-anchor="middle">Auto-scaling • Volume Storage</text>
+
+  <!-- ========== MIDDLE LAYER: RAG &amp; Fine-tuning Services ========== -->
+
+  <!-- RAG Service (vLLM) -->
+  <rect x="900" y="100" width="250" height="180" fill="url(#grad-rag)" stroke="#059669" stroke-width="3" rx="12"/>
+  <rect x="900" y="100" width="250" height="45" fill="#059669" rx="12"/>
+  <text x="1025" y="128" class="section-title" text-anchor="middle">🚀 RAG SERVICE (vLLM)</text>
+  <text x="1025" y="165" class="box-text" text-anchor="middle">@modal.cls</text>
+  <text x="1025" y="185" class="box-text" text-anchor="middle">📊 Embeddings (bge-small)</text>
+  <text x="1025" y="205" class="box-text" text-anchor="middle">🤖 vLLM Engine (Phi-3)</text>
+  <text x="1025" y="225" class="box-text" text-anchor="middle">💾 ChromaDB (Local)</text>
+  <text x="1025" y="250" class="metric" text-anchor="middle">⚡ &lt;3s Response Time</text>
+
+  <!-- Fine-tuning Service -->
+  <rect x="900" y="320" width="250" height="160" fill="url(#grad-finetune)" stroke="#dc2626" stroke-width="3" rx="12"/>
+  <rect x="900" y="320" width="250" height="45" fill="#dc2626" rx="12"/>
+  <text x="1025" y="348" class="section-title" text-anchor="middle">🔥 FINE-TUNING SERVICE</text>
+  <text x="1025" y="385" class="box-text" text-anchor="middle">@modal.cls (H200 GPU)</text>
+  <text x="1025" y="405" class="box-text" text-anchor="middle">LoRA Training (r=16)</text>
+  <text x="1025" y="425" class="box-text" text-anchor="middle">Model Merging</text>
+  <text x="1025" y="445" class="box-text" text-anchor="middle">Evaluation &amp; Save</text>
+  <text x="1025" y="465" class="metric" text-anchor="middle">201,651 samples</text>
+
+  <!-- ========== BOTTOM LAYER: Data &amp; Storage ========== -->
+
+  <!-- Vector Database -->
+  <rect x="50" y="350" width="200" height="130" class="storage-box" rx="12"/>
+  <rect x="50" y="350" width="200" height="40" fill="#6b7280" rx="12"/>
+  <text x="150" y="375" class="section-title" text-anchor="middle">💾 CHROMADB</text>
+  <text x="150" y="410" class="box-text" text-anchor="middle">Collection: langchain</text>
+  <text x="150" y="430" class="box-text" text-anchor="middle">3,766 documents</text>
+  <text x="150" y="450" class="box-text" text-anchor="middle">Vector Embeddings</text>
+  <text x="150" y="470" class="metric" text-anchor="middle">~400ms search</text>
+
+  <!-- Data Sources -->
+  <rect x="50" y="530" width="200" height="150" class="data-box" rx="12"/>
+  <rect x="50" y="530" width="200" height="40" fill="#4f46e5" rx="12"/>
+  <text x="150" y="555" class="section-title" text-anchor="middle">📁 DATA SOURCES</text>
+  <text x="150" y="590" class="box-text" text-anchor="middle">📄 Insurance PDFs</text>
+  <text x="150" y="610" class="box-text" text-anchor="middle">📊 Census CSVs</text>
+  <text x="150" y="630" class="box-text" text-anchor="middle">📕 Product Docs</text>
+  <text x="150" y="655" class="box-text" text-anchor="middle">Modal Volume:</text>
+  <text x="150" y="672" class="metric" text-anchor="middle" font-size="10">mcp-hack-ins-products</text>
+
+  <!-- Document Processing -->
+  <rect x="300" y="530" width="220" height="120" class="data-box" rx="12"/>
+  <rect x="300" y="530" width="220" height="40" fill="#4f46e5" rx="12"/>
+  <text x="410" y="555" class="section-title" text-anchor="middle">⚙️ PROCESSING</text>
+  <text x="410" y="590" class="box-text" text-anchor="middle">PyPDF • python-docx</text>
+  <text x="410" y="610" class="box-text" text-anchor="middle">pandas • Text Splitter</text>
+  <text x="410" y="630" class="box-text" text-anchor="middle">Chunk: 1000 chars</text>
+
+  <!-- Indexing Process -->
+  <rect x="570" y="530" width="220" height="120" class="data-box" rx="12"/>
+  <rect x="570" y="530" width="220" height="40" fill="#4f46e5" rx="12"/>
+  <text x="680" y="555" class="section-title" text-anchor="middle">🔍 INDEXING</text>
+  <text x="680" y="590" class="box-text" text-anchor="middle">HuggingFace Embeddings</text>
+  <text x="680" y="610" class="box-text" text-anchor="middle">Batch Upsert</text>
+  <text x="680" y="630" class="box-text" text-anchor="middle">GPU Accelerated</text>
+
+  <!-- Model Storage -->
+  <rect x="50" y="730" width="200" height="100" class="storage-box" rx="12"/>
+  <rect x="50" y="730" width="200" height="40" fill="#6b7280" rx="12"/>
+  <text x="150" y="755" class="section-title" text-anchor="middle">💿 MODEL STORAGE</text>
+  <text x="150" y="790" class="box-text" text-anchor="middle">Modal Volumes</text>
+  <text x="150" y="810" class="box-text" text-anchor="middle">merged_model/</text>
+
+  <!-- Fine-tuning Data -->
+  <rect x="570" y="730" width="220" height="100" class="data-box" rx="12"/>
+  <rect x="570" y="730" width="220" height="40" fill="#4f46e5" rx="12"/>
+  <text x="680" y="755" class="section-title" text-anchor="middle">📊 TRAINING DATA</text>
+  <text x="680" y="790" class="box-text" text-anchor="middle">Japan Census Q&amp;A</text>
+  <text x="680" y="810" class="box-text" text-anchor="middle">train.jsonl / val.jsonl</text>
+
+  <!-- ========== ARROWS &amp; DATA FLOW ========== -->
+
+  <!-- User to API -->
+  <path d="M 230 150 L 280 150" class="arrow-api" marker-end="url(#arrow-api)"/>
+  <text x="255" y="145" class="label" text-anchor="middle">Query</text>
+
+  <!-- API to Modal -->
+  <path d="M 500 150 L 550 150" class="arrow-api" marker-end="url(#arrow-api)"/>
+
+  <!-- Modal to RAG -->
+  <path d="M 830 150 L 900 150" class="arrow-rag" marker-end="url(#arrow-rag)"/>
+  <text x="865" y="145" class="label" text-anchor="middle">RAG Request</text>
+
+  <!-- RAG to ChromaDB -->
+  <path d="M 900 250 L 250 250 L 250 350" class="arrow-rag" marker-end="url(#arrow-rag)"/>
+  <text x="575" y="245" class="label" text-anchor="middle">Vector Search</text>
+
+  <!-- ChromaDB to Document Processing (indexing flow) -->
+  <path d="M 150 480 L 150 530" class="arrow-data" marker-end="url(#arrow-data)"/>
+
+  <!-- Data Sources to Processing -->
+  <path d="M 250 590 L 300 590" class="arrow-data" marker-end="url(#arrow-data)"/>
+
+  <!-- Processing to Indexing -->
+  <path d="M 520 590 L 570 590" class="arrow-data" marker-end="url(#arrow-data)"/>
+
+  <!-- Indexing to ChromaDB -->
+  <path d="M 680 530 L 680 410 L 250 410" class="arrow-data" marker-end="url(#arrow-data)"/>
+
+  <!-- Fine-tuning Data to Service -->
+  <path d="M 680 730 L 680 680 L 1025 680 L 1025 480" class="arrow-finetune" marker-end="url(#arrow-finetune)"/>
+  <text x="850" y="675" class="label" text-anchor="middle">Training Data</text>
+
+  <!-- Fine-tuning to Model Storage -->
+  <path d="M 900 400 L 250 400 L 250 730" class="arrow-finetune" marker-end="url(#arrow-finetune)"/>
+  <text x="575" y="395" class="label" text-anchor="middle">Save Merged Model</text>
+
+  <!-- Model Storage to RAG (model loading) -->
+  <path d="M 250 780 L 850 780 L 850 190 L 900 190" class="arrow-finetune" marker-end="url(#arrow-finetune)" stroke-dasharray="5,5"/>
+  <text x="550" y="775" class="label" text-anchor="middle">Load Fine-tuned Model</text>
+
+  <!-- ========== LEGEND ========== -->
+  <rect x="1200" y="550" width="180" height="180" fill="#f9fafb" stroke="#d1d5db" stroke-width="2" rx="10"/>
+  <text x="1290" y="575" class="section-title" text-anchor="middle" fill="#1a1a1a">LEGEND</text>
+  
+  <path d="M 1220 595 L 1260 595" class="arrow-rag" marker-end="url(#arrow-rag)"/>
+  <text x="1270" y="600" class="label">RAG Query Flow</text>
+  
+  <path d="M 1220 620 L 1260 620" class="arrow-finetune" marker-end="url(#arrow-finetune)"/>
+  <text x="1270" y="625" class="label">Fine-tuning Flow</text>
+  
+  <path d="M 1220 645 L 1260 645" class="arrow-data" marker-end="url(#arrow-data)"/>
+  <text x="1270" y="650" class="label">Indexing Flow</text>
+  
+  <path d="M 1220 670 L 1260 670" class="arrow-api" marker-end="url(#arrow-api)"/>
+  <text x="1270" y="675" class="label">API Flow</text>
+  
+  <text x="1290" y="705" class="metric" text-anchor="middle" font-size="11">Performance:</text>
+  <text x="1290" y="720" class="label" text-anchor="middle">RAG: &lt;3s latency</text>
+
+  <!-- ========== FOOTER ========== -->
+  <text x="700" y="885" class="subtitle" text-anchor="middle" font-size="12">
+    Infrastructure: Modal • GPU: A10G/H200 • Framework: vLLM 0.6.3 • Updated: 2025-11-30
+  </text>
+</svg>

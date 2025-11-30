@@ -1,0 +1,84 @@
+graph TB
+    %% User Layer
+    subgraph "User Layer"
+        UI[Web Interface<br/>API Clients]
+    end
+
+    %% API Layer
+    subgraph "API Layer"
+        API[FastAPI<br/>POST /query<br/>GET /health<br/>RAGAPIClient]
+    end
+
+    %% Modal Infrastructure
+    subgraph "Modal Infrastructure"
+        Modal[GPU Containers A10G<br/>Auto-scaling<br/>Volume Storage<br/>mcp-hack-ins-products]
+    end
+
+    %% RAG Service
+    subgraph "RAG Service"
+        RAG[FastRAGService @modal.cls<br/>HuggingFace Embeddings<br/>Phi-3 LLM + vLLM<br/>ChromaDB Retriever<br/><3s Response Time]
+    end
+
+    %% Fine-tuning Service
+    subgraph "Fine-tuning Service"
+        FT[Fine-tuning Service @modal.cls<br/>Dataset Preparation<br/>Model Training<br/>Evaluation & Save]
+    end
+
+    %% Data Layer
+    subgraph "Data Layer"
+        VectorDB[ChromaDB<br/>product_design collection<br/>Vector Embeddings<br/>Similarity Search]
+
+        Sources[Data Sources<br/>📄 Word .docx<br/>📕 PDF .pdf<br/>📊 Excel .xlsx/.xls<br/>Modal Volume]
+
+        Processing[Document Processing<br/>load_product_design_docs()<br/>PDF Reader pypdf<br/>Word Parser python-docx<br/>Excel Reader pandas]
+
+        Indexing[Indexing Process<br/>RecursiveCharacterTextSplitter<br/>HuggingFaceEmbeddings<br/>create_product_design_vector_db()<br/>Batch Upsert to ChromaDB]
+
+        FTData[Fine-tuning Data<br/>Insurance Q&A Pairs<br/>Domain-specific Prompts<br/>Evaluation Datasets]
+
+        ModelStore[Model Storage<br/>HuggingFace Hub<br/>Fine-tuned Models<br/>Modal Volumes]
+    end
+
+    %% API Response
+    subgraph "API Response"
+        Response[QueryResponse<br/>answer: string<br/>retrieval_time: float<br/>generation_time: float<br/>sources: array<br/>success: bool]
+    end
+
+    %% Flow Connections
+    UI -->|"1. User Query"| API
+    API -->|"2. Modal Infrastructure"| Modal
+    Modal -->|"3. RAG Processing"| RAG
+    RAG -->|"4. Vector Search"| VectorDB
+    VectorDB -->|"5. Document Loading"| Processing
+    Processing -->|"6. Text Extraction"| Indexing
+    Indexing -->|"7. Chunking & Embedding"| VectorDB
+    Sources -->|"Word/PDF/Excel Processing"| Processing
+    FT -->|"Fine-tuning Pipeline"| ModelStore
+    FTData -->|"Domain Data"| FT
+    RAG -->|"8. Formatted Response"| Response
+    Response -->|"API Response"| API
+
+    %% Styling
+    classDef userLayer fill:#e8f5e8,stroke:#27ae60,stroke-width:2px
+    classDef apiLayer fill:#e8f4fd,stroke:#3498db,stroke-width:2px
+    classDef modalLayer fill:#f8f9fa,stroke:#6c757d,stroke-width:2px
+    classDef ragService fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    classDef ftService fill:#f5c6cb,stroke:#dc3545,stroke-width:2px
+    classDef dataLayer fill:#e9ecef,stroke:#6c757d,stroke-width:2px
+    classDef sources fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px
+    classDef processing fill:#d4edda,stroke:#28a745,stroke-width:2px
+    classDef indexing fill:#cce5ff,stroke:#0066cc,stroke-width:2px
+    classDef ftData fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    classDef response fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px
+
+    class UI userLayer
+    class API apiLayer
+    class Modal modalLayer
+    class RAG ragService
+    class FT ftService
+    class VectorDB,ModelStore dataLayer
+    class Sources sources
+    class Processing processing
+    class Indexing indexing
+    class FTData ftData
+    class Response response
