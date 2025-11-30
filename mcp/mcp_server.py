@@ -415,6 +415,9 @@ def create_jira_user_story(epic_key: str, summary: str, description: str,
     """
     print(f"[JIRA] Creating user story under {epic_key}: {summary}")
     
+    # Extract actual key if format is "KEY: Summary"
+    actual_epic_key = epic_key.split(':')[0].strip()
+    
     if use_real_jira():
         try:
             jira = get_jira_client()
@@ -423,13 +426,13 @@ def create_jira_user_story(epic_key: str, summary: str, description: str,
             description_adf = create_adf_description(description)
             
             story_dict = {
-                'project': {'key': epic_key.split('-')[0]},
+                'project': {'key': actual_epic_key.split('-')[0]},
                 'summary': summary,
                 'description': description_adf,
                 'issuetype': {'name': 'Story'},
                 # Link to Epic - field name varies by JIRA instance, usually 'parent' for Next-Gen or 'customfield_XXXXX'
                 # Trying standard 'parent' first for modern JIRA Cloud
-                'parent': {'key': epic_key}
+                'parent': {'key': actual_epic_key}
             }
             
             new_issue = jira.create_issue(fields=story_dict)
@@ -470,6 +473,69 @@ def create_jira_user_story(epic_key: str, summary: str, description: str,
         "source": "mock_jira",
         "timestamp": datetime.now().isoformat()
     }
+
+# ===== Helper Functions =====
+def get_available_epics() -> List[str]:
+    """Get list of available epics for dropdown"""
+    epics_list = []
+    
+    if use_real_jira():
+        try:
+            # Use direct REST API call to avoid deprecated GET endpoint
+            import requests
+            from requests.auth import HTTPBasicAuth
+            
+            # Ensure no trailing slash in base URL
+            base_url = config.JIRA_URL.rstrip('/')
+            api_url = f"{base_url}/rest/api/3/search"
+            
+            auth = HTTPBasicAuth(config.JIRA_EMAIL, config.JIRA_API_TOKEN)
+            headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            }
+            
+            # Search for all epics in project
+            jql = f'project = "{config.JIRA_PROJECT_KEY}" AND issuetype = Epic ORDER BY created DESC'
+            
+            payload = {
+                "jql": jql,
+                "maxResults": 20,
+                "fields": ["summary"]
+            }
+            
+            response = requests.post(api_url, json=payload, headers=headers, auth=auth)
+            
+            # Handle 410 fallback
+            if response.status_code == 410:
+                api_url = f"{base_url}/rest/api/3/search/jql"
+                response = requests.post(api_url, json=payload, headers=headers, auth=auth)
+                
+            if response.ok:
+                data = response.json()
+                issues = data.get("issues", [])
+                if "issues" not in data and isinstance(data, list):
+                    issues = data
+                    
+                for issue in issues:
+                    key = issue.get("key")
+                    summary = issue.get("fields", {}).get("summary", "")
+                    epics_list.append(f"{key}: {summary}")
+        except Exception as e:
+            print(f"[JIRA] Error fetching epics: {e}")
+    else:
+        # Mock mode
+        for epic in mock_epics:
+            epics_list.append(f"{epic['key']}: {epic['summary']}")
+            
+    return epics_list
+
+def refresh_epics_dropdown():
+    """Refresh the choices for the epic dropdown"""
+    choices = get_available_epics()
+    if not choices:
+        return gr.Dropdown.update(choices=[], value=None, label="No Epics Found - Please Create an Epic First")
+    return gr.Dropdown.update(choices=choices, value=choices[0] if choices else None, label="Select Epic")
 
 # ===== Gradio Interface =====
 def create_gradio_interface():
@@ -556,7 +622,16 @@ def create_gradio_interface():
             )
         
         with gr.Tab("JIRA - Create User Story"):
-            story_epic = gr.Textbox(label="Epic Key", placeholder="PROJ-100")
+            with gr.Row():
+                initial_epics = get_available_epics()
+                story_epic = gr.Dropdown(
+                    choices=initial_epics,
+                    value=initial_epics[0] if initial_epics else None,
+                    label="Select Epic" if initial_epics else "No Epics Found - Please Create an Epic First",
+                    allow_custom_value=True # Allow typing if needed, or strictly selection
+                )
+                refresh_btn = gr.Button("🔄 Refresh Epics")
+            
             story_summary = gr.Textbox(label="Story Summary", placeholder="Story title...")
             story_desc = gr.Textbox(
                 label="Story Description",
@@ -566,6 +641,8 @@ def create_gradio_interface():
             story_points = gr.Number(label="Story Points (optional)", value=None)
             create_story_btn = gr.Button("Create User Story", variant="primary")
             story_output = gr.JSON(label="Created Story")
+            
+            refresh_btn.click(refresh_epics_dropdown, outputs=[story_epic])
             
             create_story_btn.click(
                 create_jira_user_story,
