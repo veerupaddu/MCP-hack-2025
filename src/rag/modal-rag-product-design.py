@@ -528,3 +528,17 @@ def query_product_design(question: str = "What are the three product tiers and t
             print(f"\n{i}. {source['metadata'].get('source', 'Unknown')}")
             print(f"   {source['content'][:200]}...")
 
+# Define data model for API
+from pydantic import BaseModel
+
+class RAGQuery(BaseModel):
+    question: str
+    top_k: int = 5
+
+@app.function(image=image)
+@modal.web_endpoint(method="POST")
+def api_query(item: RAGQuery):
+    """Expose RAG query as a web endpoint"""
+    model = ProductDesignRAG()
+    return model.query.remote(item.question, item.top_k)
+

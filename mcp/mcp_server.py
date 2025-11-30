@@ -69,62 +69,93 @@ def use_real_jira() -> bool:
 # ===== RAG Functions =====
 def query_rag(requirement: str) -> Dict:
     """
-    Query RAG system for relevant context and generate product specification.
-    
-    Args:
-        requirement: User's requirement text
-        
-    Returns:
-        Dict with specification, context, and recommendations
+    Query the RAG system for product specifications based on the requirement.
     """
-    print(f"[RAG] Querying with requirement: {requirement[:100]}...")
+    print(f"[RAG] Querying with requirement: {requirement[:50]}...")
     
-    if config.RAG_ENABLED:
-        # TODO: Implement real RAG query with ChromaDB/Pinecone
-        # from langchain.vectorstores import Chroma
-        # vectordb = Chroma(persist_directory=config.VECTOR_DB_PATH)
-        # results = vectordb.similarity_search(requirement, k=5)
-        pass
+    if config.RAG_ENABLED and config.RAG_API_URL:
+        try:
+            import requests
+            print(f"[RAG] Calling remote endpoint: {config.RAG_API_URL}")
+            
+            response = requests.post(
+                config.RAG_API_URL,
+                json={"question": requirement, "top_k": 5},
+                headers={"Content-Type": "application/json"},
+                timeout=60
+            )
+            
+            if response.ok:
+                result = response.json()
+                answer = result.get("answer", "")
+                sources = result.get("sources", [])
+                
+                # Parse the answer to extract structured fields if possible
+                # For now, we'll wrap the answer in our standard structure
+                return {
+                    "status": "success",
+                    "specification": {
+                        "title": "Product Specification (RAG Generated)",
+                        "summary": answer[:200] + "...",
+                        "features": [line.strip('- ') for line in answer.split('\n') if line.strip().startswith('-')],
+                        "technical_requirements": ["Derived from product design docs"],
+                        "acceptance_criteria": ["See detailed RAG answer"],
+                        "estimated_effort": "TBD",
+                        "full_answer": answer,
+                        "context_retrieved": len(sources)
+                    },
+                    "source": "real_rag",
+                    "timestamp": datetime.now().isoformat()
+                }
+            else:
+                print(f"[RAG] Error: {response.status_code} - {response.text}")
+        except Exception as e:
+            print(f"[RAG] Exception: {e}")
+            
+    # Mock response fallback
+    print("[RAG] Using mock response")
     
-    # Mock RAG response
-    specification = {
-        "title": "Generated Product Specification",
-        "summary": f"Product specification for: {requirement[:100]}",
+    # Simulate processing time
+    # time.sleep(1)
+    
+    # Simple keyword matching for mock data
+    req_lower = requirement.lower()
+    
+    spec = {
+        "title": "Auto Insurance Product Spec",
+        "summary": "Specification based on Tokyo market requirements.",
         "features": [
-            "Core functionality implementation",
-            "User interface components",
-            "API endpoints and integration",
-            "Database schema design",
-            "Security and authentication"
+            "User registration and login",
+            "Policy selection interface",
+            "Premium calculation engine"
         ],
         "technical_requirements": [
-            "Backend: Python/FastAPI or Node.js/Express",
-            "Frontend: React or Vue.js",
-            "Database: PostgreSQL or MongoDB",
-            "Authentication: JWT tokens",
-            "Deployment: Docker containers"
+            "Secure database for user data",
+            "Integration with payment gateway",
+            "Responsive web design"
         ],
         "acceptance_criteria": [
-            "All core features implemented and tested",
-            "API documentation complete",
-            "Unit test coverage > 80%",
-            "Security audit passed",
-            "Performance benchmarks met"
+            "User can create an account",
+            "User can view policy details",
+            "Premium is calculated correctly"
         ],
-        "dependencies": [
-            "User authentication system",
-            "Database migration tools",
-            "CI/CD pipeline setup"
-        ],
-        "estimated_effort": "2-3 sprints",
-        "context_retrieved": 5,
-        "confidence_score": 0.85
+        "estimated_effort": "2 weeks"
     }
     
+    if "mobile" in req_lower or "app" in req_lower:
+        spec["title"] = "Mobile App Specification"
+        spec["features"].append("Push notifications")
+        spec["technical_requirements"].append("iOS and Android support")
+        
+    if "ai" in req_lower or "agent" in req_lower:
+        spec["title"] = "AI Agent Integration Spec"
+        spec["features"].append("Chat interface")
+        spec["technical_requirements"].append("LLM integration")
+        
     return {
         "status": "success",
-        "specification": specification,
-        "source": "mock_rag" if not config.RAG_ENABLED else "real_rag",
+        "specification": spec,
+        "source": "mock_rag",
         "timestamp": datetime.now().isoformat()
     }
 
