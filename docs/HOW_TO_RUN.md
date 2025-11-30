@@ -66,14 +66,31 @@ This will run sample questions and show the model's answers.
 
 ### Step 3: Deploy API Endpoint
 
-Deploy the inference API:
+### 4. Deploy Inference API
 
-**Option A: GPU Endpoint (A10G)**
+You have three options for deployment. For production use with low latency (<3s), **Option B** is recommended.
+
+**Option A: Standard GPU Endpoint (A10G)**
+Good for testing, uses standard Transformers library.
 ```bash
 ./venv/bin/modal deploy src/finetune/api_endpoint.py
 ```
 
-**Option B: CPU Endpoint**
+**Option B: High-Performance vLLM Endpoint (Recommended)**
+Uses vLLM for <3s latency. Requires model merging first.
+
+1. **Merge Model**: Convert LoRA adapter to full model
+   ```bash
+   ./venv/bin/modal run src/finetune/merge_model.py
+   ```
+
+2. **Deploy vLLM Endpoint**:
+   ```bash
+   ./venv/bin/modal deploy src/finetune/api_endpoint_vllm.py
+   ```
+
+**Option C: CPU Endpoint**
+Slowest, but cheapest. Good for debugging without GPU quota.
 ```bash
 ./venv/bin/modal deploy src/finetune/api_endpoint_cpu.py
 ```

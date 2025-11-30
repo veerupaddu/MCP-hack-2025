@@ -158,13 +158,36 @@ def finetune():
     trainer.train()
     
     # Save model
-    print("💾 Saving fine-tuned model...")
+    # Save adapter
+    print("💾 Saving adapter...")
     model.save_pretrained("/data/checkpoints/final_model")
     tokenizer.save_pretrained("/data/checkpoints/final_model")
     
+    # Merge and save full model for vLLM
+    print("🔄 Merging model for vLLM optimization...")
+    # Reload base model in bfloat16 (not 4-bit) for merging
+    base_model = AutoModelForCausalLM.from_pretrained(
+        "microsoft/Phi-3-mini-4k-instruct",
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+    
+    # Load adapter
+    from peft import PeftModel
+    model_to_merge = PeftModel.from_pretrained(base_model, "/data/checkpoints/final_model")
+    
+    # Merge
+    merged_model = model_to_merge.merge_and_unload()
+    
+    # Save merged model
+    print("💾 Saving merged model to /data/checkpoints/merged_model...")
+    merged_model.save_pretrained("/data/checkpoints/merged_model", safe_serialization=True)
+    tokenizer.save_pretrained("/data/checkpoints/merged_model")
+    
     vol_checkpoints.commit()
     
-    print("✅ Fine-tuning complete! Model saved to model-checkpoints volume.")
+    print("✅ Fine-tuning & Merging complete! Merged model saved for vLLM.")
 
 @app.local_entrypoint()
 def main():
