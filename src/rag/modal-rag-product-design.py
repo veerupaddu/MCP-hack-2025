@@ -1,5 +1,5 @@
 """
-Extended Modal RAG to include product design documents (markdown/Word)
+Extended Modal RAG to include product design documents (Word, PDF, Excel)
 This extends the existing modal-rag.py to support querying the product design spec
 """
 
@@ -24,9 +24,11 @@ image = (
         "langchain-text-splitters==0.3.2",
         "sentence-transformers==3.3.0",
         "chromadb==0.5.20",
-        "pypdf==5.1.0",
+        "pypdf==5.1.0",  # For PDF documents
         "python-docx==1.1.0",  # For Word documents
-        "markdown==3.5.1",  # For markdown parsing
+        "openpyxl==3.1.2",  # For Excel documents (.xlsx)
+        "pandas==2.2.0",  # For Excel data processing
+        "xlrd==2.0.1",  # For older Excel files (.xls)
         "cryptography==43.0.3",
         "transformers==4.46.2",
         "torch==2.4.0",
@@ -49,57 +51,102 @@ def list_volume_files():
 
 @app.function(image=image, volumes={"/insurance-data": vol})
 def load_product_design_docs():
-    """Load product design documents (markdown and Word)"""
+    """Load product design documents (Word, PDF, Excel only - no markdown)"""
     import os
     import docx
-    import markdown
     from pathlib import Path
     
     documents = []
     
     # First, list what's actually in the volume for debugging
-    print("🔍 Scanning volume for product design documents...")
+    print("🔍 Scanning volume for product design documents (Word, PDF, Excel only)...")
     all_files = []
     for root, dirs, files in os.walk("/insurance-data"):
         for file in files:
             full_path = os.path.join(root, file)
             all_files.append(full_path)
-            if 'product_design' in file.lower() or 'tokyo_auto_insurance' in file.lower():
-                print(f"  📄 Found: {full_path}")
+            # Only show supported file types
+            file_lower = file.lower()
+            if file.endswith(('.docx', '.pdf', '.xlsx', '.xls')):
+                if 'tokyo_auto_insurance' in file_lower or 'product_design' in file_lower:
+                    print(f"  📄 Found: {full_path}")
     
-    # Load markdown files - check both root and docs subdirectory
-    md_files = []
+    # Load PDF files
+    pdf_files = []
     for root, dirs, files in os.walk("/insurance-data"):
         for file in files:
-            if file.endswith(('.md', '.markdown')):
+            if file.endswith('.pdf'):
                 full_path = os.path.join(root, file)
-                # Match product design files (case insensitive)
                 file_lower = file.lower()
-                if 'product_design' in file_lower or 'tokyo_auto_insurance' in file_lower:
-                    md_files.append(full_path)
+                if 'tokyo_auto_insurance' in file_lower or 'product_design' in file_lower:
+                    pdf_files.append(full_path)
     
-    print(f"📄 Found {len(md_files)} markdown product design files")
-    for md_file in md_files:
+    print(f"📄 Found {len(pdf_files)} PDF product design files")
+    for pdf_file in pdf_files:
         try:
-            with open(md_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-                # Convert markdown to plain text (basic)
-                html = markdown.markdown(content)
-                # Simple text extraction (remove HTML tags)
-                import re
-                text = re.sub(r'<[^>]+>', '', html)
-                
-                documents.append({
-                    'page_content': text,
-                    'metadata': {
-                        'source': md_file,
-                        'type': 'product_design',
-                        'format': 'markdown'
-                    }
-                })
-                print(f"  ✅ Loaded: {md_file}")
+            from pypdf import PdfReader
+            reader = PdfReader(pdf_file)
+            text_content = []
+            for page in reader.pages:
+                text_content.append(page.extract_text())
+            
+            full_text = '\n'.join(text_content)
+            if not full_text.strip():
+                print(f"  ⚠️ No text extracted from {pdf_file}")
+                continue
+            
+            documents.append({
+                'page_content': full_text,
+                'metadata': {
+                    'source': pdf_file,
+                    'type': 'product_design',
+                    'format': 'pdf'
+                }
+            })
+            print(f"  ✅ Loaded: {pdf_file} ({len(full_text)} characters)")
         except Exception as e:
-            print(f"  ⚠️ Error loading {md_file}: {e}")
+            print(f"  ⚠️ Error loading {pdf_file}: {e}")
+    
+    # Load Excel files
+    excel_files = []
+    for root, dirs, files in os.walk("/insurance-data"):
+        for file in files:
+            if file.endswith(('.xlsx', '.xls')):
+                full_path = os.path.join(root, file)
+                file_lower = file.lower()
+                if 'tokyo_auto_insurance' in file_lower or 'product_design' in file_lower:
+                    excel_files.append(full_path)
+    
+    print(f"📊 Found {len(excel_files)} Excel product design files")
+    for excel_file in excel_files:
+        try:
+            import pandas as pd
+            # Read all sheets
+            excel_data = pd.read_excel(excel_file, sheet_name=None)
+            text_content = []
+            
+            for sheet_name, df in excel_data.items():
+                text_content.append(f"Sheet: {sheet_name}")
+                # Convert DataFrame to text representation
+                text_content.append(df.to_string())
+                text_content.append("")  # Empty line between sheets
+            
+            full_text = '\n'.join(text_content)
+            if not full_text.strip():
+                print(f"  ⚠️ No data extracted from {excel_file}")
+                continue
+            
+            documents.append({
+                'page_content': full_text,
+                'metadata': {
+                    'source': excel_file,
+                    'type': 'product_design',
+                    'format': 'excel'
+                }
+            })
+            print(f"  ✅ Loaded: {excel_file} ({len(full_text)} characters)")
+        except Exception as e:
+            print(f"  ⚠️ Error loading {excel_file}: {e}")
     
     # Load Word documents - check both root and docs subdirectory
     docx_files = []
@@ -454,8 +501,10 @@ def index_product_design():
         print(f"❌ Error: {result['message']}")
         print("\n💡 Tip: Make sure files are uploaded to the volume:")
         print("   modal volume put mcp-hack-ins-products \\")
-        print("     docs/tokyo_auto_insurance_product_design_filled.md \\")
         print("     docs/tokyo_auto_insurance_product_design.docx")
+        print("   # Or PDF/Excel files:")
+        print("   # modal volume put mcp-hack-ins-products docs/file.pdf")
+        print("   # modal volume put mcp-hack-ins-products docs/file.xlsx")
     print(f"{'='*60}")
 
 @app.local_entrypoint()

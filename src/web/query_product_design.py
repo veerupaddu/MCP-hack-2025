@@ -72,9 +72,9 @@ def query(question: str):
         print("\n💡 Solutions:")
         print("\n1. Activate your virtual environment:")
         print("   source venv/bin/activate")
-        print("   python query_product_design.py --index")
+        print("   python src/web/query_product_design.py --index")
         print("\n2. Or use the helper script:")
-        print("   ./run_with_venv.sh --index")
+        print("   ./scripts/setup/run_with_venv.sh --index")
         print("\n3. Or install Modal globally:")
         print("   pip3 install modal")
         sys.exit(1)
@@ -105,9 +105,9 @@ def index():
         print("\n💡 Solutions:")
         print("\n1. Activate your virtual environment:")
         print("   source venv/bin/activate")
-        print("   python query_product_design.py --index")
+        print("   python src/web/query_product_design.py --index")
         print("\n2. Or use the helper script:")
-        print("   ./run_with_venv.sh --index")
+        print("   ./scripts/setup/run_with_venv.sh --index")
         print("\n3. Or install Modal globally:")
         print("   pip3 install modal")
         sys.exit(1)
@@ -153,13 +153,13 @@ def main():
         epilog="""
 Examples:
   # Index the documents first
-  python query_product_design.py --index
+  python src/web/query_product_design.py --index
   
   # Ask a single question
-  python query_product_design.py --query "What are the three product tiers?"
+  python src/web/query_product_design.py --query "What are the three product tiers?"
   
   # Interactive mode
-  python query_product_design.py --interactive
+  python src/web/query_product_design.py --interactive
   
   # Example questions:
   - "What are the three product tiers and their premium ranges?"
