@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Development Agent - Workflow Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">
+                    <span class="icon">🤖</span>
+                    AI Development Agent
+                </h1>
+                <p class="subtitle">Automated Software Development Workflow</p>
+            </div>
+            <div class="status-badge" id="connectionStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Input Section -->
+            <section class="card input-section">
+                <h2 class="section-title">
+                    <span class="section-icon">📝</span>
+                    Requirement Input
+                </h2>
+                <form id="requirementForm">
+                    <div class="form-group">
+                        <label for="requirement">Enter your requirement (3-5 sentences)</label>
+                        <textarea 
+                            id="requirement" 
+                            name="requirement" 
+                            rows="5" 
+                            placeholder="Describe the feature or functionality you want to build. Be specific about the requirements, expected behavior, and any technical constraints..."
+                            required
+                            minlength="50"
+                        ></textarea>
+                        <div class="char-counter">
+                            <span id="charCount">0</span> characters
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <span class="btn-text">Start Workflow</span>
+                        <span class="btn-icon">→</span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Progress Section -->
+            <section class="card progress-section">
+                <h2 class="section-title">
+                    <span class="section-icon">📊</span>
+                    Workflow Progress
+                </h2>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-percentage" id="progressPercentage">0%</div>
+                </div>
+                <div class="workflow-steps" id="workflowSteps">
+                    <!-- Steps will be dynamically generated -->
+                </div>
+            </section>
+
+            <!-- Two Column Layout -->
+            <div class="two-column">
+                <!-- Activity Log -->
+                <section class="card activity-section">
+                    <h2 class="section-title">
+                        <span class="section-icon">📋</span>
+                        Activity Log
+                    </h2>
+                    <div class="activity-log" id="activityLog">
+                        <div class="log-entry log-info">
+                            <span class="log-time">--:--:--</span>
+                            <span class="log-message">System ready. Waiting for input...</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- File Modifications -->
+                <section class="card files-section">
+                    <h2 class="section-title">
+                        <span class="section-icon">📁</span>
+                        Modified Files
+                    </h2>
+                    <div class="file-list" id="fileList">
+                        <div class="empty-state">
+                            <span class="empty-icon">📄</span>
+                            <p>No files modified yet</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Built with ❤️ for automated software development</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -11,8 +11,8 @@ This document outlines the design for an AI-powered agent that automates the com
 ```mermaid
 graph TD
     A[User Input: 3-5 Sentence Requirement] --> B[Web Dashboard]
-    B --> C[RAG System: Product Spec Generation]
-    C --> D[JIRA Integration via Gradio MCP]
+    B --> C[RAG & Fine-tuning via Gradio MCP]
+    C --> D[Product Spec Generation]
     D --> E[Git Branch Creation]
     E --> F[Code Generation in src/agent/]
     F --> G[Automated Code Review]
@@ -44,27 +44,31 @@ graph TD
 
 ---
 
-### 2. RAG-Based Product Specification & JIRA Integration
+### 2. RAG & Fine-tuning System Integration via Gradio MCP
 **Process**:
-1. Query RAG system with user requirement
-2. Generate detailed product specification including:
+1. Query RAG system with user requirement via Gradio MCP
+2. If needed, query fine-tuned model for domain-specific insights
+3. Generate detailed product specification including:
    - Feature description
    - Acceptance criteria
    - Technical requirements
    - Dependencies
-3. Create JIRA Epic with generated spec
-4. Break down into User Stories
-5. Use **Gradio MCP Server** for JIRA API integration
+   - Implementation approach
+4. Use **Gradio MCP Server** to access both:
+   - RAG system (vector database + LLM)
+   - Fine-tuned models (for specialized knowledge)
 
 **Technologies**:
-- RAG: Vector database (Pinecone/Weaviate) + LLM
-- Gradio MCP Server: For JIRA API calls
-- JIRA REST API
+- RAG: Vector database (ChromaDB/Pinecone) + LLM
+- Fine-tuned Models: Domain-specific models (e.g., insurance, finance)
+- Gradio MCP Server: Unified interface for RAG and fine-tuning systems
+- LangChain: For orchestrating RAG queries
 
 **Output**: 
-- JIRA Epic ID
-- List of User Story IDs
-- Product specification document
+- Detailed product specification document
+- Technical implementation plan
+- Recommended architecture
+- Code generation prompts
 
 ---
 
@@ -224,19 +228,20 @@ graph TD
 ### Core Components
 | Component | Technology |
 |-----------|-----------|
-| Web Dashboard | React + TypeScript / Gradio |
-| Backend API | FastAPI / Flask |
-| RAG System | LangChain + Pinecone/Weaviate |
+| Web Dashboard | HTML/CSS/JS (implemented) |
+| Backend API | FastAPI (implemented) |
+| RAG System | LangChain + ChromaDB/Pinecone |
+| Fine-tuned Models | Domain-specific models |
 | LLM | GPT-4 / Claude 3.5 |
-| MCP Server | Gradio MCP for JIRA |
+| MCP Server | Gradio MCP for RAG & Fine-tuning |
 | Git Integration | GitPython |
 | Testing | pytest / Jest |
 | CI/CD | GitHub Actions / GitLab CI |
 
 ### External Integrations
-- **JIRA**: Via Gradio MCP Server
+- **RAG System**: Via Gradio MCP Server for knowledge retrieval
+- **Fine-tuned Models**: Via Gradio MCP Server for specialized insights
 - **Git**: GitHub/GitLab/Bitbucket API
-- **RAG**: Vector database for product specs
 - **Notification**: Email/Slack/Discord
 
 ---
@@ -246,13 +251,13 @@ graph TD
 ```
 User Input (Text)
     ↓
-RAG Query (Embeddings)
+RAG Query (Embeddings) via Gradio MCP
+    ↓
+Fine-tuned Model Query (if needed)
     ↓
 Product Spec (Structured JSON)
     ↓
-JIRA API (via Gradio MCP)
-    ↓
-Epic/Stories (JIRA IDs)
+Implementation Plan Generation
     ↓
 Code Generation (LLM)
     ↓
@@ -290,7 +295,7 @@ Summary Report (Dashboard + Email)
 │  Workflow Progress:                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
 │  1. ✅ Requirement Analysis          [Complete]    │
-│  2. ✅ JIRA Epic Created             [EPIC-123]    │
+│  2. ✅ RAG & Fine-tuning Query       [Spec Ready]  │
 │  3. ✅ Git Branch Created            [feature/...] │
 │  4. 🔄 Code Generation               [In Progress] │
 │  5. ⏳ Code Review                   [Pending]     │
@@ -318,21 +323,23 @@ Summary Report (Dashboard + Email)
 
 ### Environment Variables
 ```bash
-# JIRA (via Gradio MCP)
-JIRA_URL=https://your-domain.atlassian.net
-JIRA_EMAIL=your-email@example.com
-JIRA_API_TOKEN=your-api-token
+# Gradio MCP Server (for RAG & Fine-tuning)
 GRADIO_MCP_SERVER_URL=http://localhost:7860
+
+# RAG System
+VECTOR_DB_TYPE=chromadb  # or pinecone
+VECTOR_DB_URL=http://localhost:8001  # for ChromaDB
+VECTOR_DB_API_KEY=xxxxx  # for Pinecone
+OPENAI_API_KEY=sk-xxxxx
+
+# Fine-tuned Models
+FINETUNED_MODEL_PATH=/path/to/finetuned/model
+FINETUNED_MODEL_TYPE=insurance  # or finance, etc.
 
 # Git
 GIT_REPO_URL=https://github.com/org/repo
 GIT_TOKEN=ghp_xxxxx
 GIT_DEFAULT_BRANCH=main
-
-# RAG
-VECTOR_DB_URL=https://your-pinecone-instance
-VECTOR_DB_API_KEY=xxxxx
-OPENAI_API_KEY=sk-xxxxx
 
 # Testing
 TEST_FRAMEWORK=pytest
