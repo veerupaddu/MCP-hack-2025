@@ -324,6 +324,32 @@ def search_jira_epics(keywords: str, similarity_threshold: float = 0.6) -> Dict:
         "timestamp": datetime.now().isoformat()
     }
 
+# Helper for Atlassian Document Format (ADF)
+def create_adf_description(text: str) -> Dict:
+    """Convert plain text to Atlassian Document Format (ADF)"""
+    if not text:
+        return {
+            "version": 1,
+            "type": "doc",
+            "content": []
+        }
+        
+    return {
+        "version": 1,
+        "type": "doc",
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": text
+                    }
+                ]
+            }
+        ]
+    }
+
 def create_jira_epic(summary: str, description: str, project_key: str = None) -> Dict:
     """
     Create a new JIRA epic.
@@ -334,10 +360,14 @@ def create_jira_epic(summary: str, description: str, project_key: str = None) ->
     if use_real_jira():
         try:
             jira = get_jira_client()
+            
+            # Use ADF format for description in API v3
+            description_adf = create_adf_description(description)
+            
             epic_dict = {
                 'project': {'key': project_key},
                 'summary': summary,
-                'description': description,
+                'description': description_adf,
                 'issuetype': {'name': 'Epic'},
             }
             new_issue = jira.create_issue(fields=epic_dict)
@@ -388,10 +418,14 @@ def create_jira_user_story(epic_key: str, summary: str, description: str,
     if use_real_jira():
         try:
             jira = get_jira_client()
+            
+            # Use ADF format for description in API v3
+            description_adf = create_adf_description(description)
+            
             story_dict = {
                 'project': {'key': epic_key.split('-')[0]},
                 'summary': summary,
-                'description': description,
+                'description': description_adf,
                 'issuetype': {'name': 'Story'},
                 # Link to Epic - field name varies by JIRA instance, usually 'parent' for Next-Gen or 'customfield_XXXXX'
                 # Trying standard 'parent' first for modern JIRA Cloud

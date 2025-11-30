@@ -1,144 +1,161 @@
-# MCP Hack - Insurance Product Design RAG System
+---
+title: AI Development Agent
+emoji: 🌖
+colorFrom: blue
+colorTo: indigo
+sdk: gradio
+sdk_version: 3.50.2
+app_file: mcp/mcp_server.py
+pinned: false
+license: mit
+short_description: AI Agent with RAG, Fine-tuning, and JIRA integration.
+tags:
+  - building-mcp-track-enterprise
+---
 
-A comprehensive RAG (Retrieval Augmented Generation) system for querying and analyzing auto insurance product design documents, specifically designed for the Tokyo market.
+# 🤖 AI Development Agent
 
-## 📁 Repository Structure
+A comprehensive AI-powered software development agent that automates the workflow from requirement analysis to JIRA task creation, leveraging RAG (Retrieval Augmented Generation), Fine-tuned Models, and MCP (Model Context Protocol).
 
+## 🌟 Overview
+
+This project implements an intelligent agent capable of:
+1. **Analyzing Requirements**: Understanding user inputs for new software features.
+2. **Generating Specifications**: Using RAG to retrieve relevant context and generate detailed product specs.
+3. **Providing Domain Insights**: Consulting fine-tuned models for industry-specific compliance and best practices.
+4. **Managing JIRA Workflows**: Automatically searching for existing epics, creating new ones, and breaking them down into user stories.
+5. **Visual Dashboard**: A modern web interface to track the entire process in real-time.
+
+## 🏗️ Architecture
+
+The system consists of two main components:
+
+### 1. Dashboard (Frontend & Backend)
+- **Tech Stack**: FastAPI, WebSocket, Vanilla JS, CSS Glassmorphism
+- **Role**: User interface, workflow orchestration, real-time logs
+- **Port**: 8000
+
+### 2. MCP Server (Integration Hub)
+- **Tech Stack**: Gradio, Python, JIRA API, ChromaDB (ready)
+- **Role**: Centralized API for RAG, Fine-tuning, and JIRA operations
+- **Port**: 7860
+
+```mermaid
+graph LR
+    User[User] -->|Requirement| Dashboard[Web Dashboard]
+    Dashboard -->|HTTP Request| MCP[Gradio MCP Server]
+    MCP -->|Query| RAG[RAG System]
+    MCP -->|Query| FT[Fine-tuned Model]
+    MCP -->|API| JIRA[JIRA Cloud]
+    JIRA -->|Epics/Stories| MCP
+    MCP -->|JSON Response| Dashboard
 ```
-/
-├── src/                          # Core application code
-│   ├── rag/                      # RAG system implementation
-│   │   ├── modal-rag.py                    # Main RAG system
-│   │   └── modal-rag-product-design.py     # Product design RAG
-│   └── web/                      # Web application
-│       ├── web_app.py                       # Flask web server
-│       ├── query_product_design.py         # RAG query interface
-│       ├── templates/                      # HTML templates
-│       └── static/                         # CSS, JS, assets
-│
-├── scripts/                       # Utility scripts
-│   ├── data/                     # Data processing scripts
-│   ├── setup/                    # Setup and installation scripts
-│   └── tools/                    # General utility scripts
-│
-├── docs/                         # Documentation
-│   ├── guides/                   # How-to guides and tutorials
-│   ├── api/                      # API documentation
-│   └── product-design/           # Product design documents
-│
-├── tests/                         # Test files
-├── diagrams/                     # System architecture diagrams
-├── finetune/                      # Model fine-tuning documentation
-├── bkp/                           # Backup files
-└── venv/                          # Python virtual environment
-```
+
+## ✨ Key Features
+
+- **🧠 Intelligent RAG**: Retrieves context from documentation to generate accurate specs.
+- **🎯 Domain Expertise**: Fine-tuned models provide specific insights (Insurance, Finance, etc.).
+- **🔄 Smart JIRA Integration**:
+  - **Deduplication**: Checks for existing epics before creating new ones.
+  - **Auto-Hierarchy**: Creates Epics and automatically adds User Stories.
+  - **ADF Support**: Handles Atlassian Document Format for rich text descriptions.
+- **⚡ Real-time Feedback**: WebSocket-based dashboard updates.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
-- Python 3.13+
-- Modal account and CLI installed
-- Virtual environment activated
+- Python 3.10+ (Recommended: 3.11 or 3.12 due to Gradio/Python 3.13 compatibility)
+- JIRA Account (for real integration)
 
 ### Installation
 
-1. **Clone and setup:**
+1. **Clone the repository**
    ```bash
    git clone <repo-url>
    cd mcp-hack
+   ```
+
+2. **Setup MCP Server**
+   ```bash
+   cd mcp
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   
+   # Fix for Python 3.13 if needed
+   pip install audioop-lts
+   ```
+
+3. **Setup Dashboard**
+   ```bash
+   cd ../dashboard
    python3 -m venv venv
    source venv/bin/activate
    pip install -r requirements.txt
    ```
 
-2. **Index product design documents:**
-   ```bash
-   modal run src/rag/modal-rag-product-design.py::index_product_design
-   ```
+### Configuration
 
-3. **Start web interface:**
-   ```bash
-   python src/web/web_app.py
-   # Or use the helper script:
-   ./scripts/setup/start_web.sh
-   ```
+Create a `.env` file in `mcp/` with your credentials:
 
-4. **Access the web interface:**
-   - Open `http://127.0.0.1:5000` in your browser
-   - Ask questions about the product design document
+```env
+# JIRA Configuration
+JIRA_URL="https://your-domain.atlassian.net"
+JIRA_EMAIL="your-email@example.com"
+JIRA_API_TOKEN="your-api-token"
+JIRA_PROJECT_KEY="PROJ"
 
-## 📖 Documentation
-
-- **Quick Start Guide:** `docs/guides/QUICK_START_RAG.md`
-- **Web Interface:** `docs/guides/WEB_INTERFACE.md`
-- **Troubleshooting:** `docs/guides/TROUBLESHOOTING.md`
-- **Product Design Docs:** `docs/product-design/`
-
-## 🔧 Key Components
-
-### RAG System (`src/rag/`)
-- **modal-rag.py**: Main RAG system for insurance products
-- **modal-rag-product-design.py**: Specialized RAG for product design documents
-
-### Web Application (`src/web/`)
-- **web_app.py**: Flask web server with REST API
-- **query_product_design.py**: RAG query interface
-- **templates/**: HTML templates for the web UI
-- **static/**: CSS and JavaScript files
-
-### Scripts (`scripts/`)
-- **data/**: Data processing and conversion scripts
-- **setup/**: Installation and setup scripts
-- **tools/**: Utility scripts for various tasks
-
-## 🎯 Usage Examples
-
-### Query via CLI
-```bash
-python src/web/query_product_design.py --question "What are the premium ranges?"
+# RAG & Fine-tuning
+RAG_ENABLED="true"
+VECTOR_DB_PATH="./data/vectordb"
+FINETUNED_MODEL_PATH="./models/insurance-model"
 ```
 
-### Query via Web Interface
-1. Start the web app: `python src/web/web_app.py`
-2. Open `http://127.0.0.1:5000`
-3. Enter your question and submit
+### Running the System
 
-### Query via Modal Directly
+**Terminal 1: MCP Server**
 ```bash
-modal run src/rag/modal-rag-product-design.py::query_product_design --question "How to make product decisions?"
+cd mcp
+source venv/bin/activate
+python mcp_server.py
 ```
 
-## 📊 Features
-
-- ✅ RAG-based document querying
-- ✅ Web interface for easy interaction
-- ✅ Support for markdown and Word documents
-- ✅ Vector database with ChromaDB
-- ✅ Fast inference with vLLM
-- ✅ Comprehensive documentation
-
-## 🛠️ Development
-
-### Running Tests
+**Terminal 2: Dashboard**
 ```bash
-python -m pytest tests/
+cd dashboard
+source venv/bin/activate
+python server.py
 ```
 
-### Adding New Documents
-1. Add documents to Modal volume
-2. Run indexing: `modal run src/rag/modal-rag-product-design.py::index_product_design`
+Access the dashboard at **http://localhost:8000**
 
-### Project Structure Guidelines
-- **src/**: Core application code only
-- **scripts/**: Utility scripts organized by purpose
-- **docs/**: Documentation organized by type
-- **tests/**: All test files
+## 📂 Project Structure
 
-## 📝 License
-
-[Add your license here]
+```
+/
+├── dashboard/                 # Web Interface
+│   ├── server.py              # FastAPI Backend
+│   ├── app.js                 # Frontend Logic
+│   ├── index.html             # UI Structure
+│   └── style.css              # Styling
+│
+├── mcp/                       # Integration Server
+│   ├── mcp_server.py          # Gradio Server
+│   ├── requirements.txt       # Dependencies
+│   └── .env.example           # Config Template
+│
+├── finetune/                  # Fine-tuning Guides
+│   ├── 01-data-preparation.md
+│   └── ...
+│
+└── docs/                      # Documentation
+    └── agentdesign.md         # System Design
+```
 
 ## 🤝 Contributing
 
-[Add contribution guidelines here]
+Contributions are welcome! Please read our contributing guidelines and submit pull requests to the `main` branch.
+
+## 📝 License
+
+MIT License

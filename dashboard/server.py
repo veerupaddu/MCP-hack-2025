@@ -174,6 +174,22 @@ async def update_step(step_id: int, status: str, details: str = "", message: str
         "message": message or f"Step {step_id}: {status}"
     })
 
+async def call_mcp_create_user_story(epic_key: str, summary: str, description: str, story_points: int = None) -> Dict:
+    """Call MCP server JIRA user story creation function"""
+    try:
+        response = requests.post(
+            f"{MCP_SERVER_URL}/api/predict",
+            json={"data": [epic_key, summary, description, story_points], "fn_index": 4},  # Create story tab index
+            timeout=30
+        )
+        if response.ok:
+            result = response.json()
+            return result.get("data", [{}])[0]
+        return {"status": "error", "message": "MCP server error"}
+    except Exception as e:
+        print(f"MCP Create Story error: {e}")
+        return {"status": "error", "message": str(e)}
+
 async def add_modified_file(path: str, status: str, stats: str = ""):
     """Add modified file to tracker"""
     await manager.broadcast({
@@ -250,13 +266,15 @@ async def run_workflow(requirement: str):
         search_result = call_mcp_search_epics(epic_summary, threshold=0.7)
         
         existing_epics = search_result.get("epics", [])
+        spec_id = "SPEC-2024-001"
+        
         if existing_epics and len(existing_epics) > 0:
             # Found similar epic
             best_match = existing_epics[0]
             spec_id = best_match["key"]
             similarity = best_match.get("similarity_score", 0)
             await send_log(f"Found similar epic: {spec_id} (similarity: {similarity})", "info")
-            await update_step(2, "complete", spec_id, f"Using existing epic: {spec_id}")
+            await update_step(2, "in-progress", spec_id, f"Using existing epic: {spec_id}. Adding stories...")
         else:
             # Create new epic
             await send_log("No similar epics found. Creating new epic...", "info")
@@ -266,11 +284,28 @@ async def run_workflow(requirement: str):
                 epic = create_result.get("epic", {})
                 spec_id = epic.get("key", "SPEC-2024-001")
                 await send_log(f"JIRA epic created: {spec_id}", "success")
-                await update_step(2, "complete", spec_id, f"Epic created: {spec_id}")
             else:
                 await send_log(f"Epic creation failed: {create_result.get('message', 'Unknown error')}", "error")
                 spec_id = "SPEC-2024-001"  # Fallback
-                await update_step(2, "complete", spec_id, f"Spec generated: {spec_id}")
+        
+        # Add User Stories to Epic (Existing or New)
+        features = spec.get("features", ["Core Implementation", "Testing"])
+        await send_log(f"Adding {len(features)} user stories to epic {spec_id}...", "info")
+        
+        for i, feature in enumerate(features):
+            story_summary = f"{feature}"
+            story_desc = f"Implement {feature} as part of {epic_summary}"
+            story_result = call_mcp_create_user_story(spec_id, story_summary, story_desc, story_points=3)
+            
+            if story_result.get("status") == "success":
+                story_key = story_result.get("story", {}).get("key", "STORY-XXX")
+                await send_log(f"Created story: {story_key} - {story_summary}", "success")
+            else:
+                await send_log(f"Failed to create story for {feature}", "warning")
+            
+            await asyncio.sleep(0.5) # Avoid rate limits
+            
+        await update_step(2, "complete", spec_id, f"Epic {spec_id} ready with {len(features)} stories")
         
         # Step 3: Git Branch Created
         await asyncio.sleep(1)
