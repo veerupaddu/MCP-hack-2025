@@ -84,7 +84,7 @@ def query_rag(requirement: str) -> Dict:
                 config.RAG_API_URL,
                 json={"question": requirement, "top_k": 5},
                 headers={"Content-Type": "application/json"},
-                timeout=60
+                timeout=180  # Increased to 3 minutes for cold starts
             )
             
             if response.ok:

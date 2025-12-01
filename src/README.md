@@ -71,36 +71,17 @@ Retrieval Augmented Generation implementations for querying document collections
   print(result['answer'])
   ```
 
-### Alternative/Legacy Files
+### Archived Files (Moved to `bkp/rag/`)
 
-#### **`modal-rag.py`**
-- **Purpose**: Original RAG implementation for general insurance documents
-- **Status**: Legacy, use `modal-rag-product-design.py` instead
-- **Differences**: Doesn't support Word/Excel, older implementation
+The following files have been moved to `bkp/rag/` to keep the active directory clean:
 
-#### **`rag_vllm.py`**
-- **Purpose**: Experimental vLLM-optimized RAG with fine-tuned model support
-- **Features**:
-  - Loads fine-tuned models from volume
-  - Advanced vLLM configuration
-  - H200 GPU support
-- **Status**: Experimental, for fine-tuned model testing
+- **`modal-rag.py`** - Original RAG implementation (legacy)
+- **`rag_vllm.py`** - Experimental vLLM-optimized RAG
+- **`rag_service.py`** - Standalone Flask service for Nebius
+- **`debug_chroma.py`** - ChromaDB inspection tool
+- **`inspect_rag_docs.py`** - Document validation utility
 
-#### **`rag_service.py`**
-- **Purpose**: Standalone Flask RAG service for Nebius deployment
-- **Use Case**: When deploying outside Modal (e.g., Nebius, AWS, self-hosted)
-- **Features**: No Modal dependencies, standard Flask/ChromaDB/vLLM
-- **Docs**: See `docs/deployment/NEBIUS_DEPLOYMENT.md`
-
-### Debug/Utility Files
-
-#### **`debug_chroma.py`**
-- **Purpose**: Inspect ChromaDB collections and documents
-- **Usage**: Check document counts, view embeddings, debug indexing
-
-#### **`inspect_rag_docs.py`**
-- **Purpose**: Inspect and validate RAG document loading
-- **Usage**: Verify document parsing and chunking
+**Note**: These files are preserved for reference but are not actively used in production. The current production system uses only `rag_api.py` and `modal-rag-product-design.py`.
 
 ---
 

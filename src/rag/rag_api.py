@@ -26,6 +26,7 @@ image = (
         # LangChain (compatible versions)
         "langchain>=0.1.0",
         "langchain-community>=0.0.13",
+        "langchain-core>=0.1.0",  # For Document class
 
         # Document processing
         "pypdf>=4.0.0",
@@ -53,10 +54,10 @@ image = (
     image=image,
     volumes={"/insurance-data": vol},
     gpu="A10G",
-    timeout=30,  # Shorter timeout for API
+    timeout=600,  # 10 minutes for LLM loading and query processing
+    scaledown_window=300,  # Keep warm for 5 minutes after last request
     max_containers=2,  # Allow scaling
-    min_containers=1,  # Keep warm for fast responses
-    scaledown_window=300,  # Keep warm for 5 minutes
+    min_containers=0,  # Start from 0 to save costs (will auto-scale on demand)
 )
 class FastRAGService:
     """Optimized RAG service for fast API responses"""
@@ -65,7 +66,7 @@ class FastRAGService:
     def enter(self):
         from langchain_community.embeddings import HuggingFaceEmbeddings
         from vllm import LLM, SamplingParams
-        from langchain.schema import Document
+        from langchain_core.documents import Document
         
         print("🚀 Initializing Fast RAG Service...")
         
@@ -76,33 +77,50 @@ class FastRAGService:
             encode_kwargs={'normalize_embeddings': True}
         )
         
-        # Connect to Chroma
-        self.chroma_service = modal.Cls.from_name("chroma-server-v2", "ChromaDB")()
+        # Connect to Chroma directly (not remote service)
+        import chromadb
+        print("   Connecting to ChromaDB...")
+        self.chroma_client = chromadb.PersistentClient(path="/insurance-data/chroma_db")
+        self.chroma_collection = self.chroma_client.get_collection("langchain")
+        print(f"   ✅ Connected to langchain collection ({self.chroma_collection.count()} documents)")
         
-        # Custom retriever
-        class RemoteChromaRetriever:
-            def __init__(self, chroma_service, embeddings, k=5):
-                self.chroma_service = chroma_service
+        # Custom retriever with direct ChromaDB access
+        class DirectChromaRetriever:
+            def __init__(self, collection, embeddings, k=5):
+                self.collection = collection
                 self.embeddings = embeddings
                 self.k = k
             
             def get_relevant_documents(self, query: str):
+                # Generate query embedding
                 query_embedding = self.embeddings.embed_query(query)
-                results = self.chroma_service.query.remote(
-                    collection_name="product_design",
+                
+                print(f"   Querying langchain collection (top {self.k})...")
+                # Query directly
+                results = self.collection.query(
                     query_embeddings=[query_embedding],
                     n_results=self.k
                 )
                 
                 docs = []
+                
+                # Add retrieved docs
                 if results and 'documents' in results and len(results['documents']) > 0:
                     for i, doc_text in enumerate(results['documents'][0]):
                         metadata = results.get('metadatas', [[{}]])[0][i] if 'metadatas' in results else {}
+                        metadata['collection'] = 'langchain'
                         docs.append(Document(page_content=doc_text, metadata=metadata))
+                    print(f"   ✅ Retrieved {len(results['documents'][0])} docs from langchain")
+                    # Print sources for debugging
+                    for i, meta in enumerate(results.get('metadatas', [[]])[0][:3]):
+                        print(f"      {i+1}. {meta.get('source', 'Unknown')[:80]}")
+                else:
+                    print(f"   ⚠️  No documents found")
                 
+                print(f"   📊 Total documents retrieved: {len(docs)}")
                 return docs
         
-        self.Retriever = RemoteChromaRetriever
+        self.Retriever = DirectChromaRetriever
         
         # Load LLM with optimized settings for speed
         print("   Loading LLM (optimized for speed)...")
@@ -135,7 +153,7 @@ class FastRAGService:
         # Retrieve documents
         retrieval_start = time.time()
         retriever = self.Retriever(
-            chroma_service=self.chroma_service,
+            collection=self.chroma_collection,
             embeddings=self.embeddings,
             k=top_k
         )
@@ -203,8 +221,8 @@ Question:
 @app.function(
     image=image,
     volumes={"/insurance-data": vol},
-    allow_concurrent_inputs=10,  # Handle multiple requests
 )
+@modal.concurrent(max_inputs=10)  # Handle multiple concurrent requests
 @modal.asgi_app()
 def fastapi_app():
     """Deploy FastAPI app - all imports inside to avoid local dependency issues"""
