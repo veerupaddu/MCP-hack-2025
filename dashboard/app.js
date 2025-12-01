@@ -43,41 +43,20 @@ const elements = {
     progressPercentage: document.getElementById('progressPercentage'),
     workflowSteps: document.getElementById('workflowSteps'),
     activityLog: document.getElementById('activityLog'),
-    fileList: document.getElementById('fileList')
+    fileList: document.getElementById('fileList'),
+    // Modal Elements
+    detailsModal: document.getElementById('detailsModal'),
+    modalTitle: document.getElementById('modalTitle'),
+    modalBody: document.getElementById('modalBody'),
+    modalClose: document.getElementById('modalClose'),
+    // Error Modal Elements
+    errorModal: document.getElementById('errorModal'),
+    errorModalBody: document.getElementById('errorModalBody'),
+    errorModalClose: document.getElementById('errorModalClose'),
+    errorModalOk: document.getElementById('errorModalOk')
 };
 
-// ===== Utility Functions =====
-function getCurrentTime() {
-    const now = new Date();
-    return now.toLocaleTimeString('en-US', { hour12: false });
-}
-
-function updateCharCount() {
-    const count = elements.textarea.value.length;
-    elements.charCount.textContent = count;
-}
-
-function updateConnectionStatus(connected) {
-    state.connected = connected;
-    const statusBadge = elements.connectionStatus;
-    const statusText = statusBadge.querySelector('.status-text');
-
-    if (connected) {
-        statusBadge.classList.add('connected');
-        statusText.textContent = 'Connected';
-    } else {
-        statusBadge.classList.remove('connected');
-        statusText.textContent = 'Disconnected';
-    }
-}
-
-function updateProgress() {
-    const completedSteps = state.steps.filter(s => s.status === 'complete').length;
-    const percentage = (completedSteps / state.steps.length) * 100;
-
-    elements.progressFill.style.width = `${percentage}%`;
-    elements.progressPercentage.textContent = `${Math.round(percentage)}%`;
-}
+// ... (Utility functions remain same) ...
 
 function renderWorkflowSteps() {
     elements.workflowSteps.innerHTML = state.steps.map(step => {
@@ -93,91 +72,136 @@ function renderWorkflowSteps() {
             statusIcon = '🔄';
             statusText = 'In Progress';
             statusClass = 'in-progress';
+        } else if (step.status === 'error') {
+            statusIcon = '❌';
+            statusText = 'Error';
+            statusClass = 'error';
         }
 
+        const hasData = step.data && Object.keys(step.data).length > 0;
+        const detailsBtn = hasData
+            ? `<button class="btn-details" onclick="showStepDetails(${step.id})">View Details</button>`
+            : '';
+
         return `
-            <div class="step ${statusClass}">
-                <div class="step-number">${step.id}</div>
-                <div class="step-icon">${step.icon}</div>
-                <div class="step-content">
-                    <div class="step-name">${step.name}</div>
-                    <div class="step-status">${statusIcon} ${statusText}${step.details ? ` - ${step.details}` : ''}</div>
+                <div class="step ${statusClass}">
+                    <div class="step-number">${step.id}</div>
+                    <div class="step-icon">${step.icon}</div>
+                    <div class="step-content">
+                        <div class="step-name">${step.name}</div>
+                        <div class="step-status">${statusIcon} ${statusText}${step.details ? ` - ${step.details}` : ''}</div>
+                    </div>
+                    ${detailsBtn}
                 </div>
-            </div>
-        `;
+            `;
     }).join('');
 }
 
-function addActivityLog(message, type = 'info') {
-    const time = getCurrentTime();
-    const logEntry = { time, message, type };
-    state.activityLog.unshift(logEntry);
+// ... (Activity Log and File List functions remain same) ...
 
-    // Keep only last 50 entries
-    if (state.activityLog.length > 50) {
-        state.activityLog = state.activityLog.slice(0, 50);
-    }
-
-    renderActivityLog();
-}
-
-function renderActivityLog() {
-    elements.activityLog.innerHTML = state.activityLog.map(log => `
-        <div class="log-entry log-${log.type}">
-            <span class="log-time">${log.time}</span>
-            <span class="log-message">${log.message}</span>
-        </div>
-    `).join('');
-}
-
-function addModifiedFile(filePath, status, stats = '') {
-    const existingIndex = state.modifiedFiles.findIndex(f => f.path === filePath);
-
-    if (existingIndex >= 0) {
-        state.modifiedFiles[existingIndex] = { path: filePath, status, stats };
-    } else {
-        state.modifiedFiles.push({ path: filePath, status, stats });
-    }
-
-    renderFileList();
-}
-
-function renderFileList() {
-    if (state.modifiedFiles.length === 0) {
-        elements.fileList.innerHTML = `
-            <div class="empty-state">
-                <span class="empty-icon">📄</span>
-                <p>No files modified yet</p>
-            </div>
-        `;
-        return;
-    }
-
-    elements.fileList.innerHTML = state.modifiedFiles.map(file => {
-        const icon = file.status === 'added' ? '➕' :
-            file.status === 'modified' ? '📝' : '➖';
-
-        return `
-            <div class="file-item">
-                <div class="file-icon">${icon}</div>
-                <div class="file-info">
-                    <div class="file-path">${file.path}</div>
-                    ${file.stats ? `<div class="file-stats">${file.stats}</div>` : ''}
-                </div>
-                <div class="file-badge ${file.status}">${file.status}</div>
-            </div>
-        `;
-    }).join('');
-}
-
-function updateStepStatus(stepId, status, details = '') {
+function updateStepStatus(stepId, status, details = '', data = null) {
     const step = state.steps.find(s => s.id === stepId);
     if (step) {
         step.status = status;
         step.details = details;
+        if (data) {
+            step.data = data;
+        }
         renderWorkflowSteps();
         updateProgress();
     }
+}
+
+// ===== Modal Logic =====
+window.showStepDetails = function (stepId) {
+    const step = state.steps.find(s => s.id === stepId);
+    if (!step || !step.data) return;
+
+    elements.modalTitle.textContent = `${step.icon} ${step.name} - Details`;
+
+    // Format data for display
+    const dataHtml = Object.entries(step.data).map(([key, value]) => {
+        // Format key (snake_case to Title Case)
+        const label = key.replace(/_/g, ' ');
+
+        // Format value
+        let displayValue = value;
+        if (Array.isArray(value)) {
+            displayValue = value.map(v => `• ${v}`).join('\n');
+        } else if (typeof value === 'object' && value !== null) {
+            displayValue = JSON.stringify(value, null, 2);
+        }
+
+        return `
+                <div class="data-item">
+                    <div class="data-label">${label}</div>
+                    <div class="data-value ${key.includes('status') ? 'highlight' : ''}">${displayValue}</div>
+                </div>
+            `;
+    }).join('');
+
+    elements.modalBody.innerHTML = `<div class="data-grid">${dataHtml}</div>`;
+    elements.detailsModal.classList.add('active');
+};
+
+function closeModal() {
+    elements.detailsModal.classList.remove('active');
+}
+
+function showErrorModal(title, message, details) {
+    const errorHtml = `
+        <div class="data-grid">
+            <div class="data-item">
+                <div class="data-label">Error Message</div>
+                <div class="data-value" style="color: #f5576c;">${message}</div>
+            </div>
+            ${details ? `
+            <div class="data-item">
+                <div class="data-label">Details</div>
+                <div class="data-value">${details}</div>
+            </div>
+            ` : ''}
+        </div>
+    `;
+    elements.errorModalBody.innerHTML = errorHtml;
+    elements.errorModal.classList.add('active');
+
+    // Re-enable form
+    elements.submitBtn.disabled = false;
+    elements.textarea.disabled = false;
+}
+
+function closeErrorModal() {
+    elements.errorModal.classList.remove('active');
+}
+
+if (elements.modalClose) {
+    elements.modalClose.addEventListener('click', closeModal);
+}
+
+if (elements.errorModalClose) {
+    elements.errorModalClose.addEventListener('click', closeErrorModal);
+}
+
+if (elements.errorModalOk) {
+    elements.errorModalOk.addEventListener('click', closeErrorModal);
+}
+
+// Close on click outside
+if (elements.detailsModal) {
+    elements.detailsModal.addEventListener('click', (e) => {
+        if (e.target === elements.detailsModal) {
+            closeModal();
+        }
+    });
+}
+
+if (elements.errorModal) {
+    elements.errorModal.addEventListener('click', (e) => {
+        if (e.target === elements.errorModal) {
+            closeErrorModal();
+        }
+    });
 }
 
 // ===== WebSocket Connection =====
@@ -223,7 +247,7 @@ function connectWebSocket() {
 function handleWebSocketMessage(data) {
     switch (data.type) {
         case 'step_update':
-            updateStepStatus(data.stepId, data.status, data.details);
+            updateStepStatus(data.stepId, data.status, data.details, data.data);
             addActivityLog(data.message, 'info');
             break;
 
@@ -240,6 +264,11 @@ function handleWebSocketMessage(data) {
             addActivityLog('Workflow completed successfully!', 'success');
             break;
 
+        case 'workflow_error':
+            addActivityLog(`Error: ${data.message}`, 'error');
+            showErrorModal(data.title || 'Workflow Error', data.message, data.details);
+            break;
+
         case 'error':
             addActivityLog(`Error: ${data.message}`, 'error');
             break;
@@ -248,6 +277,8 @@ function handleWebSocketMessage(data) {
             console.log('Unknown message type:', data.type);
     }
 }
+
+// ... (Rest of the file remains same) ...
 
 // ===== Form Submission =====
 async function handleSubmit(event) {

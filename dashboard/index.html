@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="container">
         <!-- Header -->
@@ -37,14 +39,9 @@
                 <form id="requirementForm">
                     <div class="form-group">
                         <label for="requirement">Enter your requirement (3-5 sentences)</label>
-                        <textarea 
-                            id="requirement" 
-                            name="requirement" 
-                            rows="5" 
+                        <textarea id="requirement" name="requirement" rows="5"
                             placeholder="Describe the feature or functionality you want to build. Be specific about the requirements, expected behavior, and any technical constraints..."
-                            required
-                            minlength="50"
-                        ></textarea>
+                            required minlength="50"></textarea>
                         <div class="char-counter">
                             <span id="charCount">0</span> characters
                         </div>
@@ -109,8 +106,36 @@
         <footer class="footer">
             <p>Built with ❤️ for automated software development</p>
         </footer>
-    </div>
+        <!-- Step Details Modal -->
+        <div class="modal-overlay" id="detailsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="modalTitle">Step Details</h3>
+                    <button class="modal-close" id="modalClose">&times;</button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- Content will be dynamically populated -->
+                </div>
+            </div>
+        </div>
 
-    <script src="app.js"></script>
+        <!-- Error Modal -->
+        <div class="modal-overlay error-modal" id="errorModal">
+            <div class="modal-content">
+                <div class="modal-header error-header">
+                    <h3 class="modal-title">❌ Workflow Error</h3>
+                    <button class="modal-close" id="errorModalClose">&times;</button>
+                </div>
+                <div class="modal-body" id="errorModalBody">
+                    <!-- Error content will be dynamically populated -->
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-primary" id="errorModalOk">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="app.js"></script>
 </body>
+
 </html>

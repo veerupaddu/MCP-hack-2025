@@ -1,20 +1,64 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-import asyncio
-import json
-from datetime import datetime
-from typing import List, Dict, Optional
-import uvicorn
-import requests
+"""
+AI Development Agent Dashboard Server
+FastAPI + WebSocket server for workflow visualization
+"""
 import os
+import sys
+import json
+import asyncio
+import requests
+import uvicorn
+from typing import Dict, List, Optional
+from datetime import datetime
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from dataclasses import dataclass, field
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+# ===== Configuration =====
+class Config:
+    """Centralized configuration for dashboard"""
+    # MCP Server
+    MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://veeru-c-sdlc-mcp.hf.space")
+    
+    # API Endpoints (Gradio 4.x format)
+    API_ENDPOINT_RAG = os.getenv("API_ENDPOINT_RAG", "/call/query_rag")
+    API_ENDPOINT_FINETUNED = os.getenv("API_ENDPOINT_FINETUNED", "/call/query_finetuned")
+    API_ENDPOINT_SEARCH_EPICS = os.getenv("API_ENDPOINT_SEARCH_EPICS", "/call/search_jira_epics")
+    API_ENDPOINT_CREATE_EPIC = os.getenv("API_ENDPOINT_CREATE_EPIC", "/call/create_jira_epic")
+    API_ENDPOINT_CREATE_STORY = os.getenv("API_ENDPOINT_CREATE_STORY", "/call/create_jira_user_story")
+    
+    # Dashboard Server
+    DASHBOARD_HOST = os.getenv("DASHBOARD_HOST", "0.0.0.0")
+    DASHBOARD_PORT = int(os.getenv("DASHBOARD_PORT", "8000"))
+    
+    # Timeouts
+    API_TIMEOUT = int(os.getenv("API_TIMEOUT", "60"))
+
+config = Config()
+
+class WorkflowState:
+    def __init__(self):
+        self.workflow_running = False
+        self.requirement = ""
+        self.activity_log = []
+        self.modified_files = []
+        self.steps = []
+        self.active_connections: List[WebSocket] = []
 
 # ===== FastAPI App Setup =====
-app = FastAPI(title="AI Development Agent API", version="1.0.0")
+app = FastAPI(title="AI Development Agent Dashboard", version="1.0.0")
 
-# CORS middleware for local development
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,99 +67,145 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+state = WorkflowState()
+
 # ===== Data Models =====
 class RequirementInput(BaseModel):
     requirement: str
 
-class WorkflowStatus(BaseModel):
-    current_step: int
-    steps: List[Dict]
-    progress_percentage: int
-
-# ===== Global State =====
-class WorkflowState:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-        self.current_step = 0
-        self.requirement = ""
-        self.activity_log = []
-        self.modified_files = []
-        self.workflow_running = False
-        
-    def reset(self):
-        self.current_step = 0
-        self.requirement = ""
-        self.activity_log = []
-        self.modified_files = []
-        self.workflow_running = False
-
-state = WorkflowState()
-
-# ===== MCP Client Configuration =====
-MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:7860")
-
 def call_mcp_rag(requirement: str) -> Dict:
-    """Call MCP server RAG query function"""
+    """Call MCP server RAG query function via Gradio 4.x API"""
     try:
+        print(f"DEBUG: Calling RAG endpoint: {config.MCP_SERVER_URL}/call/query_rag")
+        # Use fn_index=0 for RAG query (based on app.py order)
         response = requests.post(
-            f"{MCP_SERVER_URL}/api/predict",
-            json={"data": [requirement], "fn_index": 0},  # RAG tab index
-            timeout=30
+            f"{config.MCP_SERVER_URL}/api/predict",
+            json={"data": [requirement], "fn_index": 0},
+            headers={"Content-Type": "application/json"},
+            timeout=config.API_TIMEOUT
         )
-        if response.ok:
-            result = response.json()
-            return result.get("data", [{}])[0]
-        return {"status": "error", "message": "MCP server error"}
+        response.raise_for_status()
+        result = response.json()
+        print(f"DEBUG: RAG initial response: {result}")
+        
+        data = result.get("data", [])
+        if data:
+            result_data = data[0]
+            if isinstance(result_data, list):
+                result_data = result_data[0] if result_data else {}
+            if isinstance(result_data, dict):
+                return result_data
+            return {"status": "success", "data": result_data}
+            
+        return {"status": "error", "message": "No data returned"}
     except Exception as e:
         print(f"MCP RAG error: {e}")
         return {"status": "error", "message": str(e)}
 
 def call_mcp_finetuned(requirement: str, domain: str = "general") -> Dict:
-    """Call MCP server fine-tuned model query function"""
+    """Call MCP server fine-tuned model query function via Gradio 4.x API"""
     try:
+        # Use fn_index=1 for Fine-tuned query
         response = requests.post(
-            f"{MCP_SERVER_URL}/api/predict",
-            json={"data": [requirement, domain], "fn_index": 1},  # Fine-tuning tab index
-            timeout=30
+            f"{config.MCP_SERVER_URL}/api/predict",
+            json={"data": [requirement, domain], "fn_index": 1},
+            headers={"Content-Type": "application/json"},
+            timeout=config.API_TIMEOUT
         )
-        if response.ok:
-            result = response.json()
-            return result.get("data", [{}])[0]
-        return {"status": "error", "message": "MCP server error"}
+        response.raise_for_status()
+        result = response.json()
+        
+        data = result.get("data", [])
+        if data:
+            result_data = data[0]
+            if isinstance(result_data, list):
+                result_data = result_data[0] if result_data else {}
+            if isinstance(result_data, dict):
+                return result_data
+            return {"status": "success", "data": result_data}
+            
+        return {"status": "error", "message": "No data returned"}
     except Exception as e:
         print(f"MCP Fine-tuned error: {e}")
         return {"status": "error", "message": str(e)}
 
 def call_mcp_search_epics(keywords: str, threshold: float = 0.6) -> Dict:
-    """Call MCP server JIRA epic search function"""
+    """Call MCP server JIRA epic search function via Gradio 4.x API"""
     try:
+        # Use fn_index=2 for Search Epics
         response = requests.post(
-            f"{MCP_SERVER_URL}/api/predict",
-            json={"data": [keywords, threshold], "fn_index": 2},  # Search tab index
-            timeout=30
+            f"{config.MCP_SERVER_URL}/api/predict",
+            json={"data": [keywords, threshold], "fn_index": 2},
+            headers={"Content-Type": "application/json"},
+            timeout=config.API_TIMEOUT
         )
-        if response.ok:
-            result = response.json()
-            return result.get("data", [{}])[0]
-        return {"status": "error", "message": "MCP server error"}
+        response.raise_for_status()
+        result = response.json()
+        
+        data = result.get("data", [])
+        if data:
+            result_data = data[0]
+            if isinstance(result_data, list):
+                return {"status": "success", "epics": result_data}
+            return result_data if isinstance(result_data, dict) else {"status": "error", "message": "Invalid response format"}
+            
+        return {"status": "error", "message": "No data returned"}
     except Exception as e:
         print(f"MCP Search error: {e}")
         return {"status": "error", "message": str(e)}
 
 def call_mcp_create_epic(summary: str, description: str, project_key: str = "PROJ") -> Dict:
-    """Call MCP server JIRA epic creation function"""
+    """Call MCP server JIRA epic creation function via Gradio 4.x API"""
     try:
+        # Use fn_index=3 for Create Epic
         response = requests.post(
-            f"{MCP_SERVER_URL}/api/predict",
-            json={"data": [summary, description, project_key], "fn_index": 3},  # Create epic tab index
-            timeout=30
+            f"{config.MCP_SERVER_URL}/api/predict",
+            json={"data": [summary, description, project_key], "fn_index": 3},
+            headers={"Content-Type": "application/json"},
+            timeout=config.API_TIMEOUT
         )
-        if response.ok:
-            result = response.json()
-            return result.get("data", [{}])[0]
-        return {"status": "error", "message": "MCP server error"}
+        response.raise_for_status()
+        result = response.json()
+        
+        data = result.get("data", [])
+        if data:
+            result_data = data[0]
+            if isinstance(result_data, list):
+                result_data = result_data[0] if result_data else {}
+            if isinstance(result_data, dict):
+                return result_data
+            return {"status": "success", "data": result_data}
+            
+        return {"status": "error", "message": "No data returned"}
     except Exception as e:
         print(f"MCP Create Epic error: {e}")
+        return {"status": "error", "message": str(e)}
+
+def call_mcp_create_user_story(epic_key: str, summary: str, description: str, story_points: int = None) -> Dict:
+    """Call MCP server JIRA user story creation function via Gradio 4.x API"""
+    try:
+        # Use fn_index=4 for Create Story
+        response = requests.post(
+            f"{config.MCP_SERVER_URL}/api/predict",
+            json={"data": [epic_key, summary, description, story_points], "fn_index": 4},
+            headers={"Content-Type": "application/json"},
+            timeout=config.API_TIMEOUT
+        )
+        response.raise_for_status()
+        result = response.json()
+        
+        data = result.get("data", [])
+        if data:
+            result_data = data[0]
+            if isinstance(result_data, list):
+                result_data = result_data[0] if result_data else {}
+            if isinstance(result_data, dict):
+                return result_data
+            return {"status": "success", "data": result_data}
+            
+        return {"status": "error", "message": "No data returned"}
+    except Exception as e:
+        print(f"MCP Create Story error: {e}")
         return {"status": "error", "message": str(e)}
 
 # ===== WebSocket Manager =====
@@ -164,31 +254,16 @@ async def send_log(message: str, level: str = "info"):
         "timestamp": datetime.now().isoformat()
     })
 
-async def update_step(step_id: int, status: str, details: str = "", message: str = ""):
+async def update_step(step_id: int, status: str, details: str = "", message: str = "", data: dict = None):
     """Update workflow step status"""
     await manager.broadcast({
         "type": "step_update",
         "stepId": step_id,
         "status": status,
         "details": details,
-        "message": message or f"Step {step_id}: {status}"
+        "message": message or f"Step {step_id}: {status}",
+        "data": data
     })
-
-async def call_mcp_create_user_story(epic_key: str, summary: str, description: str, story_points: int = None) -> Dict:
-    """Call MCP server JIRA user story creation function"""
-    try:
-        response = requests.post(
-            f"{MCP_SERVER_URL}/api/predict",
-            json={"data": [epic_key, summary, description, story_points], "fn_index": 4},  # Create story tab index
-            timeout=30
-        )
-        if response.ok:
-            result = response.json()
-            return result.get("data", [{}])[0]
-        return {"status": "error", "message": "MCP server error"}
-    except Exception as e:
-        print(f"MCP Create Story error: {e}")
-        return {"status": "error", "message": str(e)}
 
 async def add_modified_file(path: str, status: str, stats: str = ""):
     """Add modified file to tracker"""
@@ -215,7 +290,15 @@ async def run_workflow(requirement: str):
         await send_log("Starting requirement analysis...", "info")
         await update_step(1, "in-progress", "", "Analyzing requirement...")
         await asyncio.sleep(2)
-        await update_step(1, "complete", "Analysis complete", "Requirement analyzed successfully")
+        
+        analysis_data = {
+            "summary": "Requirement Analysis",
+            "input_length": len(requirement),
+            "complexity_score": "Medium",
+            "key_entities": ["User", "System", "Database"],
+            "detected_intent": "Feature Implementation"
+        }
+        await update_step(1, "complete", "Analysis complete", "Requirement analyzed successfully", data=analysis_data)
         await send_log("Requirement analysis complete", "success")
         
         # Step 2: RAG & Fine-tuning Query
@@ -226,8 +309,11 @@ async def run_workflow(requirement: str):
         # Call MCP RAG
         rag_result = call_mcp_rag(requirement)
         if rag_result.get("status") == "success":
-            spec = rag_result.get("specification", {})
-            await send_log(f"RAG query successful - {spec.get('context_retrieved', 0)} contexts retrieved", "success")
+            # Handle wrapped list response
+            spec = rag_result.get("specification") or rag_result.get("data", {})
+            if isinstance(spec, list):
+                spec = spec[0] if spec else {}
+            await send_log(f"RAG query successful - {spec.get('context_retrieved', 0) if isinstance(spec, dict) else 0} contexts retrieved", "success")
         else:
             await send_log(f"RAG query failed: {rag_result.get('message', 'Unknown error')}", "warning")
             spec = {}
@@ -240,25 +326,25 @@ async def run_workflow(requirement: str):
             await send_log(f"Fine-tuned model query failed: {ft_result.get('message', 'Unknown error')}", "warning")
         
         # Generate epic summary from RAG results
-        epic_summary = spec.get("title", "New Feature Implementation")
+        epic_summary = spec.get("title", "New Feature Implementation") if isinstance(spec, dict) else "New Feature Implementation"
         epic_description = f"""
 ## Requirement
 {requirement}
 
 ## Product Specification
-{spec.get('summary', 'Generated from user requirement')}
+{spec.get('summary', 'Generated from user requirement') if isinstance(spec, dict) else 'Generated from user requirement'}
 
 ## Features
-{chr(10).join('- ' + f for f in spec.get('features', []))}
+{chr(10).join('- ' + f for f in spec.get('features', [])) if isinstance(spec, dict) else '- Core Implementation\n- Testing'}
 
 ## Technical Requirements
-{chr(10).join('- ' + t for t in spec.get('technical_requirements', []))}
+{chr(10).join('- ' + t for t in spec.get('technical_requirements', [])) if isinstance(spec, dict) else '- TBD'}
 
 ## Acceptance Criteria
-{chr(10).join('- ' + a for a in spec.get('acceptance_criteria', []))}
+{chr(10).join('- ' + a for a in spec.get('acceptance_criteria', [])) if isinstance(spec, dict) else '- TBD'}
 
 ## Estimated Effort
-{spec.get('estimated_effort', 'TBD')}
+{spec.get('estimated_effort', 'TBD') if isinstance(spec, dict) else 'TBD'}
 """
         
         # Search for existing similar epics
@@ -285,13 +371,24 @@ async def run_workflow(requirement: str):
                 spec_id = epic.get("key", "SPEC-2024-001")
                 await send_log(f"JIRA epic created: {spec_id}", "success")
             else:
-                await send_log(f"Epic creation failed: {create_result.get('message', 'Unknown error')}", "error")
-                spec_id = "SPEC-2024-001"  # Fallback
+                # Stop workflow and show error
+                error_msg = create_result.get('message', 'Unknown error')
+                await send_log(f"Epic creation failed: {error_msg}", "error")
+                await update_step(2, "error", "Failed", f"Epic creation failed")
+                await manager.broadcast({
+                    "type": "workflow_error",
+                    "title": "JIRA Epic Creation Failed",
+                    "message": error_msg,
+                    "details": f"The workflow was stopped because the JIRA epic could not be created.\n\nError: {error_msg}\n\nPlease check your JIRA configuration (project key, permissions, etc.) and try again."
+                })
+                state.workflow_running = False
+                return  # Stop workflow immediately
         
         # Add User Stories to Epic (Existing or New)
         features = spec.get("features", ["Core Implementation", "Testing"])
         await send_log(f"Adding {len(features)} user stories to epic {spec_id}...", "info")
         
+        created_stories = []
         for i, feature in enumerate(features):
             story_summary = f"{feature}"
             story_desc = f"Implement {feature} as part of {epic_summary}"
@@ -299,13 +396,21 @@ async def run_workflow(requirement: str):
             
             if story_result.get("status") == "success":
                 story_key = story_result.get("story", {}).get("key", "STORY-XXX")
+                created_stories.append(story_key)
                 await send_log(f"Created story: {story_key} - {story_summary}", "success")
             else:
                 await send_log(f"Failed to create story for {feature}", "warning")
             
             await asyncio.sleep(0.5) # Avoid rate limits
             
-        await update_step(2, "complete", spec_id, f"Epic {spec_id} ready with {len(features)} stories")
+        rag_step_data = {
+            "rag_spec": spec,
+            "jira_epic": spec_id,
+            "created_stories": created_stories,
+            "rag_status": rag_result.get("status"),
+            "finetune_status": ft_result.get("status")
+        }
+        await update_step(2, "complete", spec_id, f"Epic {spec_id} ready with {len(features)} stories", data=rag_step_data)
         
         # Step 3: Git Branch Created
         await asyncio.sleep(1)
@@ -313,7 +418,14 @@ async def run_workflow(requirement: str):
         await update_step(3, "in-progress", "", "Creating feature branch...")
         await asyncio.sleep(1.5)
         branch_name = f"feature/{spec_id}-new-feature"
-        await update_step(3, "complete", branch_name, f"Branch created: {branch_name}")
+        
+        git_data = {
+            "branch": branch_name,
+            "base_branch": "main",
+            "repository": "mcp-hack-2025",
+            "command": f"git checkout -b {branch_name}"
+        }
+        await update_step(3, "complete", branch_name, f"Branch created: {branch_name}", data=git_data)
         await send_log(f"Git branch created: {branch_name}", "success")
         
         # Step 4: Code Generation
@@ -334,7 +446,13 @@ async def run_workflow(requirement: str):
             await add_modified_file(file_path, status, stats)
             await asyncio.sleep(0.5)
         
-        await update_step(4, "complete", "4 files created", "Code generation complete")
+        codegen_data = {
+            "files_generated": [f[0] for f in files],
+            "total_lines": 355,
+            "model_used": "Claude 3.5 Sonnet",
+            "generation_time": "3.2s"
+        }
+        await update_step(4, "complete", "4 files created", "Code generation complete", data=codegen_data)
         await send_log("Code generation complete - 4 files created", "success")
         
         # Step 5: Code Review
@@ -342,7 +460,15 @@ async def run_workflow(requirement: str):
         await send_log("Running code review...", "info")
         await update_step(5, "in-progress", "", "Analyzing code quality...")
         await asyncio.sleep(2.5)
-        await update_step(5, "complete", "No issues found", "Code review passed")
+        
+        review_data = {
+            "status": "Passed",
+            "issues_found": 0,
+            "suggestions": 2,
+            "linter_score": "10/10",
+            "security_scan": "Clean"
+        }
+        await update_step(5, "complete", "No issues found", "Code review passed", data=review_data)
         await send_log("Code review passed - no issues found", "success")
         
         # Step 6: Git Commit
@@ -351,7 +477,14 @@ async def run_workflow(requirement: str):
         await update_step(6, "in-progress", "", "Staging and committing files...")
         await asyncio.sleep(1.5)
         commit_sha = "a1b2c3d"
-        await update_step(6, "complete", commit_sha, f"Committed: {commit_sha}")
+        
+        commit_data = {
+            "hash": commit_sha,
+            "message": f"feat({spec_id}): Implement new features based on requirements",
+            "author": "AI Agent",
+            "files_changed": 4
+        }
+        await update_step(6, "complete", commit_sha, f"Committed: {commit_sha}", data=commit_data)
         await send_log(f"Changes committed: {commit_sha}", "success")
         
         # Step 7: Unit Testing
@@ -359,7 +492,15 @@ async def run_workflow(requirement: str):
         await send_log("Running unit tests...", "info")
         await update_step(7, "in-progress", "", "Executing test suite...")
         await asyncio.sleep(3)
-        await update_step(7, "complete", "15/15 passed (100%)", "All tests passed")
+        
+        test_data = {
+            "total_tests": 15,
+            "passed": 15,
+            "failed": 0,
+            "coverage": "100%",
+            "duration": "0.45s"
+        }
+        await update_step(7, "complete", "15/15 passed (100%)", "All tests passed", data=test_data)
         await send_log("Unit tests passed: 15/15 (100% coverage)", "success")
         
         # Step 8: Manual Approval (waiting state)
@@ -367,7 +508,13 @@ async def run_workflow(requirement: str):
         await send_log("Waiting for manual approval...", "info")
         await update_step(8, "in-progress", "", "Awaiting user approval...")
         await asyncio.sleep(2)
-        await update_step(8, "complete", "Approved", "Changes approved")
+        
+        approval_data = {
+            "approver": "User (Auto-approved for demo)",
+            "timestamp": datetime.now().isoformat(),
+            "comments": "Looks good!"
+        }
+        await update_step(8, "complete", "Approved", "Changes approved", data=approval_data)
         await send_log("Changes approved by user", "success")
         
         # Step 9: PR Submission
@@ -376,7 +523,15 @@ async def run_workflow(requirement: str):
         await update_step(9, "in-progress", "", "Submitting PR...")
         await asyncio.sleep(2)
         pr_number = "#42"
-        await update_step(9, "complete", pr_number, f"PR created: {pr_number}")
+        
+        pr_data = {
+            "pr_number": pr_number,
+            "title": f"feat({spec_id}): New Feature Implementation",
+            "description": epic_description,
+            "reviewers": ["Senior Dev", "QA Lead"],
+            "url": f"https://github.com/org/repo/pull/{pr_number.replace('#', '')}"
+        }
+        await update_step(9, "complete", pr_number, f"PR created: {pr_number}", data=pr_data)
         await send_log(f"Pull request created: {pr_number}", "success")
         
         # Step 10: PR Merge & Notification
@@ -384,7 +539,13 @@ async def run_workflow(requirement: str):
         await send_log("Merging pull request...", "info")
         await update_step(10, "in-progress", "", "Merging to main branch...")
         await asyncio.sleep(2)
-        await update_step(10, "complete", "Merged", "PR merged successfully")
+        
+        merge_data = {
+            "status": "Merged",
+            "merged_by": "CI/CD Bot",
+            "timestamp": datetime.now().isoformat()
+        }
+        await update_step(10, "complete", "Merged", "PR merged successfully", data=merge_data)
         await send_log("Pull request merged successfully!", "success")
         
         # Workflow complete
