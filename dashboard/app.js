@@ -26,7 +26,8 @@ let state = {
     steps: WORKFLOW_STEPS.map(step => ({
         ...step,
         status: 'pending',
-        details: ''
+        details: '',
+        data: null
     })),
     activityLog: [],
     modifiedFiles: []
@@ -56,8 +57,117 @@ const elements = {
     errorModalOk: document.getElementById('errorModalOk')
 };
 
-// ... (Utility functions remain same) ...
 
+// ===== Utility Functions =====
+function updateCharCount() {
+    const count = elements.textarea.value.length;
+    elements.charCount.textContent = count;
+}
+
+function updateConnectionStatus(connected) {
+    state.connected = connected;
+    const statusDot = elements.connectionStatus.querySelector('.status-dot');
+    const statusText = elements.connectionStatus.querySelector('.status-text');
+    
+    if (connected) {
+        statusDot.style.backgroundColor = '#4ade80';
+        statusText.textContent = 'Connected';
+        elements.connectionStatus.classList.add('connected');
+    } else {
+        statusDot.style.backgroundColor = '#f87171';
+        statusText.textContent = 'Disconnected';
+        elements.connectionStatus.classList.remove('connected');
+    }
+}
+
+function updateProgress() {
+    const completedSteps = state.steps.filter(s => s.status === 'complete').length;
+    const percentage = Math.round((completedSteps / state.steps.length) * 100);
+    
+    elements.progressFill.style.width = `${percentage}%`;
+    elements.progressPercentage.textContent = `${percentage}%`;
+}
+
+function formatTime(date) {
+    return new Date(date).toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+// ===== Activity Log Functions =====
+function addActivityLog(message, level = 'info') {
+    const entry = {
+        message,
+        level,
+        timestamp: new Date().toISOString()
+    };
+    state.activityLog.push(entry);
+    renderActivityLog();
+}
+
+function renderActivityLog() {
+    if (state.activityLog.length === 0) {
+        elements.activityLog.innerHTML = `
+            <div class="log-entry log-info">
+                <span class="log-time">--:--:--</span>
+                <span class="log-message">System ready. Waiting for input...</span>
+            </div>
+        `;
+        return;
+    }
+    
+    elements.activityLog.innerHTML = state.activityLog
+        .slice(-50) // Keep last 50 entries
+        .reverse()
+        .map(entry => `
+            <div class="log-entry log-${entry.level}">
+                <span class="log-time">${formatTime(entry.timestamp)}</span>
+                <span class="log-message">${entry.message}</span>
+            </div>
+        `).join('');
+    
+    // Auto-scroll to top (newest entries)
+    elements.activityLog.scrollTop = 0;
+}
+
+// ===== File List Functions =====
+function addModifiedFile(path, status, stats = '') {
+    const file = { path, status, stats };
+    state.modifiedFiles.push(file);
+    renderFileList();
+}
+
+function renderFileList() {
+    if (state.modifiedFiles.length === 0) {
+        elements.fileList.innerHTML = `
+            <div class="empty-state">
+                <span class="empty-icon">📄</span>
+                <p>No files modified yet</p>
+            </div>
+        `;
+        return;
+    }
+    
+    elements.fileList.innerHTML = state.modifiedFiles.map(file => {
+        let statusIcon = '📄';
+        if (file.status === 'added') statusIcon = '➕';
+        else if (file.status === 'modified') statusIcon = '✏️';
+        else if (file.status === 'deleted') statusIcon = '🗑️';
+        
+        return `
+            <div class="file-item file-${file.status}">
+                <span class="file-icon">${statusIcon}</span>
+                <span class="file-path">${file.path}</span>
+                ${file.stats ? `<span class="file-stats">${file.stats}</span>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// ===== Workflow Steps Rendering =====
 function renderWorkflowSteps() {
     elements.workflowSteps.innerHTML = state.steps.map(step => {
         let statusIcon = '⏳';
@@ -84,20 +194,18 @@ function renderWorkflowSteps() {
             : '';
 
         return `
-                <div class="step ${statusClass}">
-                    <div class="step-number">${step.id}</div>
-                    <div class="step-icon">${step.icon}</div>
-                    <div class="step-content">
-                        <div class="step-name">${step.name}</div>
-                        <div class="step-status">${statusIcon} ${statusText}${step.details ? ` - ${step.details}` : ''}</div>
-                    </div>
-                    ${detailsBtn}
+            <div class="step ${statusClass}">
+                <div class="step-number">${step.id}</div>
+                <div class="step-icon">${step.icon}</div>
+                <div class="step-content">
+                    <div class="step-name">${step.name}</div>
+                    <div class="step-status">${statusIcon} ${statusText}${step.details ? ` - ${step.details}` : ''}</div>
                 </div>
-            `;
+                ${detailsBtn}
+            </div>
+        `;
     }).join('');
 }
-
-// ... (Activity Log and File List functions remain same) ...
 
 function updateStepStatus(stepId, status, details = '', data = null) {
     const step = state.steps.find(s => s.id === stepId);
@@ -112,8 +220,9 @@ function updateStepStatus(stepId, status, details = '', data = null) {
     }
 }
 
+
 // ===== Modal Logic =====
-window.showStepDetails = function (stepId) {
+window.showStepDetails = function(stepId) {
     const step = state.steps.find(s => s.id === stepId);
     if (!step || !step.data) return;
 
@@ -133,11 +242,11 @@ window.showStepDetails = function (stepId) {
         }
 
         return `
-                <div class="data-item">
-                    <div class="data-label">${label}</div>
-                    <div class="data-value ${key.includes('status') ? 'highlight' : ''}">${displayValue}</div>
-                </div>
-            `;
+            <div class="data-item">
+                <div class="data-label">${label}</div>
+                <div class="data-value ${key.includes('status') ? 'highlight' : ''}">${displayValue}</div>
+            </div>
+        `;
     }).join('');
 
     elements.modalBody.innerHTML = `<div class="data-grid">${dataHtml}</div>`;
@@ -175,6 +284,7 @@ function closeErrorModal() {
     elements.errorModal.classList.remove('active');
 }
 
+// Modal event listeners
 if (elements.modalClose) {
     elements.modalClose.addEventListener('click', closeModal);
 }
@@ -262,6 +372,9 @@ function handleWebSocketMessage(data) {
 
         case 'workflow_complete':
             addActivityLog('Workflow completed successfully!', 'success');
+            // Re-enable form
+            elements.submitBtn.disabled = false;
+            elements.textarea.disabled = false;
             break;
 
         case 'workflow_error':
@@ -278,8 +391,6 @@ function handleWebSocketMessage(data) {
     }
 }
 
-// ... (Rest of the file remains same) ...
-
 // ===== Form Submission =====
 async function handleSubmit(event) {
     event.preventDefault();
@@ -294,6 +405,18 @@ async function handleSubmit(event) {
     // Disable form
     elements.submitBtn.disabled = true;
     elements.textarea.disabled = true;
+
+    // Reset state for new workflow
+    state.steps = WORKFLOW_STEPS.map(step => ({
+        ...step,
+        status: 'pending',
+        details: '',
+        data: null
+    }));
+    state.modifiedFiles = [];
+    renderWorkflowSteps();
+    renderFileList();
+    updateProgress();
 
     addActivityLog('Submitting requirement...', 'info');
 
@@ -310,15 +433,13 @@ async function handleSubmit(event) {
             const result = await response.json();
             addActivityLog('Requirement submitted successfully!', 'success');
             addActivityLog('Starting workflow...', 'info');
-
-            // Start first step
-            updateStepStatus(1, 'in-progress');
         } else {
-            throw new Error('Failed to submit requirement');
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to submit requirement');
         }
     } catch (error) {
         console.error('Submission error:', error);
-        addActivityLog('Failed to submit requirement. Please try again.', 'error');
+        addActivityLog(`Failed to submit requirement: ${error.message}`, 'error');
 
         // Re-enable form
         elements.submitBtn.disabled = false;
@@ -338,6 +459,7 @@ function init() {
     renderWorkflowSteps();
     renderActivityLog();
     renderFileList();
+    updateCharCount();
 
     // Connect WebSocket
     connectWebSocket();

@@ -10,7 +10,7 @@ import requests
 import uvicorn
 from typing import Dict, List, Optional
 from datetime import datetime
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -53,6 +53,7 @@ class WorkflowState:
         self.activity_log = []
         self.modified_files = []
         self.steps = []
+        self.current_step = 0
         self.active_connections: List[WebSocket] = []
 
 # ===== FastAPI App Setup =====
@@ -101,18 +102,24 @@ def call_mcp_rag(requirement: str) -> Dict:
         client = Client(config.MCP_SERVER_URL)
         result = client.predict(requirement, api_name="/query_rag")
         
+        print(f"DEBUG: RAG result type: {type(result)}")
         print(f"DEBUG: RAG result: {result}")
         
         # Handle the result
         if isinstance(result, dict):
+            print(f"DEBUG: Returning dict result with keys: {result.keys()}")
             return result
         elif isinstance(result, list):
+            print(f"DEBUG: Result is list with {len(result)} items")
             return result[0] if result else {"status": "error", "message": "No data returned"}
         else:
+            print(f"DEBUG: Result is {type(result)}, wrapping in success response")
             return {"status": "success", "data": result}
             
     except Exception as e:
         print(f"MCP RAG error: {e}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
 def call_mcp_finetuned(requirement: str, domain: str = "general") -> Dict:
@@ -153,7 +160,7 @@ def call_mcp_search_epics(keywords: str, threshold: float = 0.6) -> Dict:
         print(f"MCP Search error: {e}")
         return {"status": "error", "message": str(e)}
 
-def call_mcp_create_epic(summary: str, description: str, project_key: str = "PROJ") -> Dict:
+def call_mcp_create_epic(summary: str, description: str, project_key: str = "SCRUM") -> Dict:
     """Call MCP server JIRA epic creation function via Gradio Client"""
     try:
         from gradio_client import Client
@@ -566,7 +573,8 @@ async def run_workflow(requirement: str):
 @app.get("/")
 async def root():
     """Serve the main dashboard page"""
-    return FileResponse("index.html")
+    dashboard_dir = os.path.dirname(__file__)
+    return FileResponse(os.path.join(dashboard_dir, "index.html"))
 
 @app.post("/api/submit-requirement")
 async def submit_requirement(req: RequirementInput):
@@ -627,7 +635,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
 # ===== Static Files =====
 # Mount static files (CSS, JS) after API routes
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
+dashboard_dir = os.path.dirname(__file__)
+app.mount("/", StaticFiles(directory=dashboard_dir, html=True), name="static")
 
 # ===== Main =====
 if __name__ == "__main__":
