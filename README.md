@@ -1,160 +1,74 @@
 ---
-title: AI Development Agent
-emoji: 🌖
+title: MCP SDLC Agent
+emoji: 🤖
 colorFrom: blue
-colorTo: indigo
+colorTo: purple
 sdk: gradio
 sdk_version: 4.44.1
 app_file: app.py
 pinned: false
 license: mit
-short_description: AI Agent with RAG, Fine-tuning, and JIRA integration.
-tags:
-  - building-mcp-track-enterprise
 ---
 
-# 🤖 AI Development Agent
+# 🤖 AI Development Agent MCP Server
 
-A comprehensive AI-powered software development agent that automates the workflow from requirement analysis to JIRA task creation, leveraging RAG (Retrieval Augmented Generation), Fine-tuned Models, and MCP (Model Context Protocol).
+AI-powered Software Development Lifecycle agent with JIRA integration, RAG capabilities, and fine-tuned model support.
 
-## 🌟 Overview
+## ✨ Features
 
-This project implements an intelligent agent capable of:
-1. **Analyzing Requirements**: Understanding user inputs for new software features.
-2. **Generating Specifications**: Using RAG to retrieve relevant context and generate detailed product specs.
-3. **Providing Domain Insights**: Consulting fine-tuned models for industry-specific compliance and best practices.
-4. **Managing JIRA Workflows**: Automatically searching for existing epics, creating new ones, and breaking them down into user stories.
-5. **Visual Dashboard**: A modern web interface to track the entire process in real-time.
+- **🎯 JIRA Integration**: Create and search epics, create user stories
+- **🧠 RAG System**: Query product design documents using retrieval-augmented generation  
+- **🔥 Fine-tuned Models**: Specialized AI models for domain-specific queries
+- **📊 Mock Mode**: Works without credentials for demonstration
 
-## 🏗️ Architecture
+## 🔧 Configuration
 
-The system consists of two main components:
+This Space uses environment variables (configure in **Settings → Repository secrets**):
 
-### 1. Dashboard (Frontend & Backend)
-- **Tech Stack**: FastAPI, WebSocket, Vanilla JS, CSS Glassmorphism
-- **Role**: User interface, workflow orchestration, real-time logs
-- **Port**: 8000
+### JIRA Configuration (Optional - uses mock if not provided)
+- `JIRA_URL`: Your JIRA instance URL (e.g., `https://your-domain.atlassian.net`)
+- `JIRA_EMAIL`: Your JIRA email
+- `JIRA_API_TOKEN`: Your JIRA API token ([How to get](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/))
+- `JIRA_PROJECT_KEY`: Default project key (e.g., `SCRUM`)
 
-### 2. MCP Server (Integration Hub)
-- **Tech Stack**: Gradio, Python, JIRA API, ChromaDB (ready)
-- **Role**: Centralized API for RAG, Fine-tuning, and JIRA operations
-- **Port**: 7860
+### RAG System Configuration (Optional)
+- `RAG_ENABLED`: Set to `true` to enable RAG system
+- `RAG_API_URL`: RAG API endpoint URL (e.g., Modal deployment URL)
 
-```mermaid
-graph LR
-    User[User] -->|Requirement| Dashboard[Web Dashboard]
-    Dashboard -->|HTTP Request| MCP[Gradio MCP Server]
-    MCP -->|Query| RAG[RAG System]
-    MCP -->|Query| FT[Fine-tuned Model]
-    MCP -->|API| JIRA[JIRA Cloud]
-    JIRA -->|Epics/Stories| MCP
-    MCP -->|JSON Response| Dashboard
-```
+### Fine-tuned Model Configuration (Optional)
+- `FINETUNED_MODEL_API_URL`: Fine-tuned model API endpoint
+- `FINETUNED_MODEL_TYPE`: Model type (`general`, `insurance`, `finance`, etc.)
 
-## ✨ Key Features
+## 🚀 Usage
 
-- **🧠 Intelligent RAG**: Retrieves context from documentation to generate accurate specs.
-- **🎯 Domain Expertise**: Fine-tuned models provide specific insights (Insurance, Finance, etc.).
-- **🔄 Smart JIRA Integration**:
-  - **Deduplication**: Checks for existing epics before creating new ones.
-  - **Auto-Hierarchy**: Creates Epics and automatically adds User Stories.
-  - **ADF Support**: Handles Atlassian Document Format for rich text descriptions.
-- **⚡ Real-time Feedback**: WebSocket-based dashboard updates.
+### Without Configuration (Mock Mode)
+The app works out of the box in mock mode - perfect for testing and demos!
 
-## 🚀 Quick Start
+### With JIRA Integration
+1. Go to **Settings** tab in your HuggingFace Space
+2. Add the environment variables listed above
+3. Restart the Space
+4. You'll now have real JIRA integration!
 
-### Prerequisites
-- Python 3.10+ (Recommended: 3.11 or 3.12 due to Gradio/Python 3.13 compatibility)
-- JIRA Account (for real integration)
+### With RAG System
+1. Deploy your RAG system (e.g., using Modal)
+2. Get the API endpoint URL
+3. Set `RAG_ENABLED=true` and `RAG_API_URL=<your-url>`
+4. Restart the Space
 
-### Installation
+## 📖 Tabs
 
-1. **Clone the repository**
-   ```bash
-   git clone <repo-url>
-   cd mcp-hack
-   ```
+- **RAG Query**: Query product specifications from documents
+- **Fine-tuned Model**: Get domain-specific insights
+- **JIRA - Search Epics**: Find existing epics by keywords
+- **JIRA - Create Epic**: Create new epics
+- **JIRA - Create User Story**: Create user stories under epics
+- **Configuration**: View current configuration
 
-2. **Setup MCP Server**
-   ```bash
-   cd mcp
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   
-   # Fix for Python 3.13 if needed
-   pip install audioop-lts
-   ```
+## 🔗 Links
 
-3. **Setup Dashboard**
-   ```bash
-   cd ../dashboard
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-### Configuration
-
-Create a `.env` file in `mcp/` with your credentials:
-
-```env
-# JIRA Configuration
-JIRA_URL="https://your-domain.atlassian.net"
-JIRA_EMAIL="your-email@example.com"
-JIRA_API_TOKEN="your-api-token"
-JIRA_PROJECT_KEY="PROJ"
-
-# RAG & Fine-tuning
-RAG_ENABLED="true"
-VECTOR_DB_PATH="./data/vectordb"
-FINETUNED_MODEL_PATH="./models/insurance-model"
-```
-
-### Running the System
-
-**Terminal 1: MCP Server**
-```bash
-cd mcp
-source venv/bin/activate
-python mcp_server.py
-```
-
-**Terminal 2: Dashboard**
-```bash
-cd dashboard
-source venv/bin/activate
-python server.py
-```
-
-Access the dashboard at **http://localhost:8000**
-
-## 📂 Project Structure
-
-```
-/
-├── dashboard/                 # Web Interface
-│   ├── server.py              # FastAPI Backend
-│   ├── app.js                 # Frontend Logic
-│   ├── index.html             # UI Structure
-│   └── style.css              # Styling
-│
-├── mcp/                       # Integration Server
-│   ├── mcp_server.py          # Gradio Server
-│   ├── requirements.txt       # Dependencies
-│   └── .env.example           # Config Template
-│
-├── finetune/                  # Fine-tuning Guides
-│   ├── 01-data-preparation.md
-│   └── ...
-│
-└── docs/                      # Documentation
-    └── agentdesign.md         # System Design
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read our contributing guidelines and submit pull requests to the `main` branch.
+- [GitHub Repository](https://github.com/veerupaddu/MCP-hack-2025)
+- [Documentation](https://github.com/veerupaddu/MCP-hack-2025/tree/main/docs)
 
 ## 📝 License
 
