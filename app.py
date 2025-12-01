@@ -36,8 +36,6 @@ if __name__ == "__main__":
         share=False,
         show_error=True,
         # HuggingFace Spaces compatibility
-        favicon_path=None,
-        # Enable queue for concurrent requests
-        enable_queue=True
+        favicon_path=None
     )
 
