@@ -734,8 +734,8 @@ def create_gradio_interface():
             - Vector DB: `{config.VECTOR_DB_PATH}`
             
             **Fine-tuned Model:**
-            - Path: `{config.FINETUNED_MODEL_PATH or 'Not configured (using mock)'}`
-            - Type: `{config.FINETUNED_MODEL_TYPE}`
+            - Path: `{config.FINETUNED_MODEL_API_URL or 'Not configured (using mock)'}`
+            - Type: `{config.FINETUNED_MODEL_API_URL}`
             
             **MCP Server:**
             - Port: `{config.MCP_PORT}`
@@ -749,7 +749,7 @@ def create_gradio_interface():
             export JIRA_API_TOKEN="your-api-token"
             export JIRA_PROJECT_KEY="PROJ"
             export RAG_ENABLED="true"
-            export FINETUNED_MODEL_PATH="/path/to/model"
+            export FINETUNED_MODEL_API_URL="/path/to/model"
             ```
             """)
     
