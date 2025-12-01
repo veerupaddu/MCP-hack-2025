@@ -98,8 +98,8 @@ def query_rag(requirement: str) -> Dict:
                     "status": "success",
                     "specification": {
                         "title": "Product Specification (RAG Generated)",
-                        "summary": answer[:200] + "...",
-                        "features": [line.strip('- ') for line in answer.split('\n') if line.strip().startswith('-')],
+                        "summary": (answer[:200] + "...") if len(answer) > 200 else answer,
+                        "features": [line.strip('- *') for line in answer.split('\n') if line.strip().startswith(('-', '*'))] or [answer],
                         "technical_requirements": ["Derived from product design docs"],
                         "acceptance_criteria": ["See detailed RAG answer"],
                         "estimated_effort": "TBD",
