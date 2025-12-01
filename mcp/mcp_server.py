@@ -731,25 +731,27 @@ def create_gradio_interface():
             
             **RAG:**
             - Enabled: `{config.RAG_ENABLED}`
+            - API URL: `{config.RAG_API_URL or 'Not configured (using mock)'}`
             - Vector DB: `{config.VECTOR_DB_PATH}`
             
             **Fine-tuned Model:**
-            - Path: `{config.FINETUNED_MODEL_API_URL or 'Not configured (using mock)'}`
-            - Type: `{config.FINETUNED_MODEL_API_URL}`
+            - API URL: `{config.FINETUNED_MODEL_API_URL or 'Not configured (using mock)'}`
+            - Type: `{config.FINETUNED_MODEL_TYPE}`
             
             **MCP Server:**
             - Port: `{config.MCP_PORT}`
             
             ---
             
-            To enable real integrations, set environment variables:
+            To enable real integrations, set environment variables in Hugging Face Spaces Secrets:
             ```bash
-            export JIRA_URL="https://your-domain.atlassian.net"
-            export JIRA_EMAIL="your-email@example.com"
-            export JIRA_API_TOKEN="your-api-token"
-            export JIRA_PROJECT_KEY="PROJ"
-            export RAG_ENABLED="true"
-            export FINETUNED_MODEL_API_URL="/path/to/model"
+            RAG_ENABLED=true
+            RAG_API_URL=https://your-modal-url.modal.run
+            FINETUNED_MODEL_API_URL=https://your-modal-url.modal.run
+            JIRA_URL=https://your-domain.atlassian.net
+            JIRA_EMAIL=your-email@example.com
+            JIRA_API_TOKEN=your-api-token
+            JIRA_PROJECT_KEY=SCRUM
             ```
             """)
     
