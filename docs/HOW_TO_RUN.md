@@ -54,6 +54,10 @@ JIRA_PROJECT_KEY="PROJ"
 RAG_ENABLED="true"
 # URL from Step 1.5 below
 RAG_API_URL="https://your-modal-url.modal.run"
+
+# Fine-tuned Model Configuration
+# URL from Step 1.6 below
+FINETUNED_MODEL_API_URL="https://your-finetuned-model-url.modal.run"
 ```
 
 ### 5. Start the Server
@@ -77,6 +81,34 @@ cd ..  # Go back to root if in mcp/
 ### 2. Get the URL
 After deployment, you will see a URL ending in `...-api-query.modal.run`.
 Copy this URL and add it to your `mcp/.env` file as `RAG_API_URL`.
+
+**To retrieve the URL later**:
+```bash
+./venv/bin/modal app list
+```
+Look for `insurance-rag-product-design` and note the endpoint URL.
+
+---
+
+## 🚀 Step 1.6: Deploy Fine-Tuned Model (Optional)
+
+To enable the real fine-tuned model for domain insights.
+
+### 1. Deploy the Model Endpoint
+```bash
+cd ..  # Go back to root if in mcp/
+./venv/bin/modal deploy src/finetune/api_endpoint_vllm.py
+```
+
+### 2. Get the URL
+After deployment, you will see a URL ending in `...-model-ask.modal.run`.
+Copy this URL and add it to your `mcp/.env` file as `FINETUNED_MODEL_API_URL`.
+
+**To retrieve the URL later**:
+```bash
+./venv/bin/modal app list
+```
+Look for `phi3-inference-vllm` and note the endpoint URL.
 
 ---
 
