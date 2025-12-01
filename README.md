@@ -5,7 +5,7 @@ colorFrom: blue
 colorTo: indigo
 sdk: gradio
 sdk_version: 3.50.2
-app_file: mcp/mcp_server.py
+app_file: app.py
 pinned: false
 license: mit
 short_description: AI Agent with RAG, Fine-tuning, and JIRA integration.
