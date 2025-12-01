@@ -21,11 +21,15 @@ if __name__ == "__main__":
     
     # Check environment variables (HuggingFace Spaces secrets)
     jira_configured = bool(os.getenv("JIRA_URL"))
-    rag_configured = os.getenv("RAG_ENABLED", "false").lower() == "true"
+    rag_enabled_raw = os.getenv("RAG_ENABLED", "false")
+    rag_configured = rag_enabled_raw.lower() == "true"
+    rag_api_url = os.getenv("RAG_API_URL", "")
     ft_configured = bool(os.getenv("FINETUNED_MODEL_API_URL"))
     
     print(f"🔧 JIRA Mode: {'Real' if jira_configured else 'Mock (no credentials)'}")
     print(f"🧠 RAG System: {'Enabled' if rag_configured else 'Mock'}")
+    print(f"   RAG_ENABLED raw value: '{rag_enabled_raw}'")
+    print(f"   RAG_API_URL: '{rag_api_url[:50]}...' " if len(rag_api_url) > 50 else f"   RAG_API_URL: '{rag_api_url}'")
     print(f"🎯 Fine-tuned Model: {'Enabled' if ft_configured else 'Mock'}")
     
     # Create and launch the app
