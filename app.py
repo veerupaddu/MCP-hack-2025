@@ -16,5 +16,11 @@ from mcp_server import create_gradio_interface
 
 if __name__ == "__main__":
     app = create_gradio_interface()
-    app.launch()
+    # Launch with explicit server settings for HuggingFace Spaces
+    app.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=False,
+        show_error=True
+    )
 
