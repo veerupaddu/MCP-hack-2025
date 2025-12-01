@@ -59,9 +59,9 @@ graph TD
    - Fine-tuned models (for specialized knowledge)
 
 **Technologies**:
-- RAG: Vector database (ChromaDB/Pinecone) + LLM
-- Fine-tuned Models: Domain-specific models (e.g., insurance, finance)
-- Gradio MCP Server: Unified interface for RAG and fine-tuning systems
+- RAG: Modal + ChromaDB (Remote) + LLM
+- Fine-tuned Models: Domain-specific models hosted on Modal
+- Gradio MCP Server: Unified interface calling remote Modal endpoints
 - LangChain: For orchestrating RAG queries
 
 **Output**: 
@@ -327,14 +327,12 @@ Summary Report (Dashboard + Email)
 GRADIO_MCP_SERVER_URL=http://localhost:7860
 
 # RAG System
-VECTOR_DB_TYPE=chromadb  # or pinecone
-VECTOR_DB_URL=http://localhost:8001  # for ChromaDB
-VECTOR_DB_API_KEY=xxxxx  # for Pinecone
-OPENAI_API_KEY=sk-xxxxx
+RAG_ENABLED=true
+RAG_API_URL=https://your-modal-rag-url.modal.run
 
 # Fine-tuned Models
-FINETUNED_MODEL_PATH=/path/to/finetuned/model
-FINETUNED_MODEL_TYPE=insurance  # or finance, etc.
+FINETUNED_MODEL_API_URL=https://your-modal-finetuned-url.modal.run
+FINETUNED_MODEL_TYPE=insurance
 
 # Git
 GIT_REPO_URL=https://github.com/org/repo

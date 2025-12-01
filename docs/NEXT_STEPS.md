@@ -24,7 +24,7 @@ curl -X POST https://mcp-hack--phi3-inference-vllm-model-ask.modal.run \
 
 ```bash
 # Test the RAG endpoint
-curl -X POST https://mcp-hack--rag-vllm-optimized-ragmodel-query.modal.run \
+curl -X POST https://mcp-hack--insurance-rag-product-design-api-query.modal.run \
   -H "Content-Type: application/json" \
   -d '{"question": "What insurance products are available?"}'
 ```
@@ -151,7 +151,7 @@ curl -X POST https://mcp-hack--rag-vllm-optimized-ragmodel-query.modal.run \
 ./venv/bin/modal deploy src/finetune/api_endpoint_vllm.py
 
 # Deploy RAG endpoint
-./venv/bin/modal deploy src/rag/rag_vllm.py
+./venv/bin/modal deploy src/rag/modal-rag-product-design.py
 
 # Evaluation
 ./venv/bin/modal run src/finetune/eval_finetuned.py

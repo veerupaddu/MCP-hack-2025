@@ -68,8 +68,8 @@ def load_product_design_docs():
             # Only show supported file types
             file_lower = file.lower()
             if file.endswith(('.docx', '.pdf', '.xlsx', '.xls')):
-                if 'tokyo_auto_insurance' in file_lower or 'product_design' in file_lower:
-                    print(f"  📄 Found: {full_path}")
+                # Relaxed filter: include all supported documents
+                print(f"  📄 Found: {full_path}")
     
     # Load PDF files
     pdf_files = []
@@ -78,8 +78,8 @@ def load_product_design_docs():
             if file.endswith('.pdf'):
                 full_path = os.path.join(root, file)
                 file_lower = file.lower()
-                if 'tokyo_auto_insurance' in file_lower or 'product_design' in file_lower:
-                    pdf_files.append(full_path)
+                # Relaxed filter: include all PDFs
+                pdf_files.append(full_path)
     
     print(f"📄 Found {len(pdf_files)} PDF product design files")
     for pdf_file in pdf_files:
@@ -424,7 +424,7 @@ class ProductDesignRAG:
         
         # Create prompt with instructions for comprehensive answers
         prompt = f"""<|system|>
-You are a helpful AI assistant that answers questions about the TokyoDrive Insurance product design document. 
+You are a helpful AI assistant that answers questions about the provided insurance product documents. 
 Provide comprehensive, detailed answers with specific information from the document. 
 Structure your answer clearly with:
 - A brief summary if relevant

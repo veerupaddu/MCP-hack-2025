@@ -29,22 +29,22 @@ Fine-tune Phi-3-mini to answer statistical questions about Japanese census, econ
 
 ```bash
 # 1. Download census data (if not already done)
-modal run docs/download_census_modal.py
+modal run src/finetune/download_census_modal.py
 
 # 2. Convert Excel files to CSV
-modal run --detach docs/convert_census_to_csv.py
+modal run --detach src/finetune/convert_census_to_csv.py
 
 # 3. Clean up filenames
-modal run docs/fix_csv_filenames.py
+modal run src/finetune/fix_csv_filenames.py
 
 # 4. Generate training dataset
-modal run docs/prepare_finetune_data.py
+modal run src/finetune/prepare_finetune_data.py
 
 # 5. Fine-tune the model
-modal run --detach docs/finetune_modal.py
+modal run --detach src/finetune/finetune_modal.py
 
 # 6. Evaluate the model
-modal run docs/eval_finetuned.py
+modal run src/finetune/eval_finetuned.py
 ```
 
 ## 📊 Results Summary
@@ -78,12 +78,12 @@ modal run docs/eval_finetuned.py
 
 | Script | Purpose | Runtime |
 |--------|---------|---------|
-| [download_census_modal.py](../docs/download_census_modal.py) | Download census data from e-Stat | ~15 min |
-| [convert_census_to_csv.py](../docs/convert_census_to_csv.py) | Convert Excel to CSV with readable names | ~10 min |
-| [fix_csv_filenames.py](../docs/fix_csv_filenames.py) | Clean URL-encoded filenames | ~1 min |
-| [prepare_finetune_data.py](../docs/prepare_finetune_data.py) | Generate QA pairs from CSVs | ~5 min |
-| [finetune_modal.py](../docs/finetune_modal.py) | Fine-tune Phi-3 with Unsloth | ~2.5 min (60 steps) |
-| [eval_finetuned.py](../docs/eval_finetuned.py) | Test fine-tuned model | ~30 sec |
+| [download_census_modal.py](../src/finetune/download_census_modal.py) | Download census data from e-Stat | ~15 min |
+| [convert_census_to_csv.py](../src/finetune/convert_census_to_csv.py) | Convert Excel to CSV with readable names | ~10 min |
+| [fix_csv_filenames.py](../src/finetune/fix_csv_filenames.py) | Clean URL-encoded filenames | ~1 min |
+| [prepare_finetune_data.py](../src/finetune/prepare_finetune_data.py) | Generate QA pairs from CSVs | ~5 min |
+| [finetune_modal.py](../src/finetune/finetune_modal.py) | Fine-tune Phi-3 with Unsloth | ~2.5 min (60 steps) |
+| [eval_finetuned.py](../src/finetune/eval_finetuned.py) | Test fine-tuned model | ~30 sec |
 
 ## 📚 Documentation
 

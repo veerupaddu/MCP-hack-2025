@@ -1,5 +1,7 @@
 # Quick Start: RAG API
 
+> **Note**: This guide is for the standalone RAG API. For the full **AI Development Agent** (MCP Server + Dashboard + JIRA), please see [HOW_TO_RUN.md](HOW_TO_RUN.md).
+
 Fast API endpoint for querying product design documents with <3 second response times.
 
 ## Deploy the API

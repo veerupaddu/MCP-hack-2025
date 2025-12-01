@@ -1,5 +1,7 @@
 # Quick Start Guide
 
+> **Note**: This guide is for the standalone web app. For the full **AI Development Agent** (MCP Server + Dashboard + JIRA), please see [HOW_TO_RUN.md](HOW_TO_RUN.md).
+
 ## Prerequisites
 
 - Python 3.13+
