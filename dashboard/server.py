@@ -93,136 +93,100 @@ def normalize_list(value):
     return value
 
 def call_mcp_rag(requirement: str) -> Dict:
-    """Call MCP server RAG query function via Gradio 4.x API"""
+    """Call MCP server RAG query function via Gradio Client"""
     try:
-        print(f"DEBUG: Calling RAG endpoint: {config.MCP_SERVER_URL}/call/query_rag")
-        # Use fn_index=0 for RAG query (based on app.py order)
-        response = requests.post(
-            f"{config.MCP_SERVER_URL}/api/predict",
-            json={"data": [requirement], "fn_index": 0},
-            headers={"Content-Type": "application/json"},
-            timeout=config.API_TIMEOUT
-        )
-        response.raise_for_status()
-        result = response.json()
-        print(f"DEBUG: RAG initial response: {result}")
+        from gradio_client import Client
+        print(f"DEBUG: Calling RAG via Gradio Client: {config.MCP_SERVER_URL}")
         
-        data = result.get("data", [])
-        if data:
-            result_data = data[0]
-            if isinstance(result_data, list):
-                result_data = result_data[0] if result_data else {}
-            if isinstance(result_data, dict):
-                return result_data
-            return {"status": "success", "data": result_data}
+        client = Client(config.MCP_SERVER_URL)
+        result = client.predict(requirement, api_name="/query_rag")
+        
+        print(f"DEBUG: RAG result: {result}")
+        
+        # Handle the result
+        if isinstance(result, dict):
+            return result
+        elif isinstance(result, list):
+            return result[0] if result else {"status": "error", "message": "No data returned"}
+        else:
+            return {"status": "success", "data": result}
             
-        return {"status": "error", "message": "No data returned"}
     except Exception as e:
         print(f"MCP RAG error: {e}")
         return {"status": "error", "message": str(e)}
 
 def call_mcp_finetuned(requirement: str, domain: str = "general") -> Dict:
-    """Call MCP server fine-tuned model query function via Gradio 4.x API"""
+    """Call MCP server fine-tuned model query function via Gradio Client"""
     try:
-        # Use fn_index=1 for Fine-tuned query
-        response = requests.post(
-            f"{config.MCP_SERVER_URL}/api/predict",
-            json={"data": [requirement, domain], "fn_index": 1},
-            headers={"Content-Type": "application/json"},
-            timeout=config.API_TIMEOUT
-        )
-        response.raise_for_status()
-        result = response.json()
+        from gradio_client import Client
         
-        data = result.get("data", [])
-        if data:
-            result_data = data[0]
-            if isinstance(result_data, list):
-                result_data = result_data[0] if result_data else {}
-            if isinstance(result_data, dict):
-                return result_data
-            return {"status": "success", "data": result_data}
+        client = Client(config.MCP_SERVER_URL)
+        result = client.predict(requirement, domain, api_name="/query_finetuned")
+        
+        if isinstance(result, dict):
+            return result
+        elif isinstance(result, list):
+            return result[0] if result else {"status": "error", "message": "No data returned"}
+        else:
+            return {"status": "success", "data": result}
             
-        return {"status": "error", "message": "No data returned"}
     except Exception as e:
         print(f"MCP Fine-tuned error: {e}")
         return {"status": "error", "message": str(e)}
 
 def call_mcp_search_epics(keywords: str, threshold: float = 0.6) -> Dict:
-    """Call MCP server JIRA epic search function via Gradio 4.x API"""
+    """Call MCP server JIRA epic search function via Gradio Client"""
     try:
-        # Use fn_index=2 for Search Epics
-        response = requests.post(
-            f"{config.MCP_SERVER_URL}/api/predict",
-            json={"data": [keywords, threshold], "fn_index": 2},
-            headers={"Content-Type": "application/json"},
-            timeout=config.API_TIMEOUT
-        )
-        response.raise_for_status()
-        result = response.json()
+        from gradio_client import Client
         
-        data = result.get("data", [])
-        if data:
-            result_data = data[0]
-            if isinstance(result_data, list):
-                return {"status": "success", "epics": result_data}
-            return result_data if isinstance(result_data, dict) else {"status": "error", "message": "Invalid response format"}
+        client = Client(config.MCP_SERVER_URL)
+        result = client.predict(keywords, threshold, api_name="/search_jira_epics")
+        
+        if isinstance(result, dict):
+            return result
+        elif isinstance(result, list):
+            return {"status": "success", "epics": result}
+        else:
+            return {"status": "error", "message": "Invalid response format"}
             
-        return {"status": "error", "message": "No data returned"}
     except Exception as e:
         print(f"MCP Search error: {e}")
         return {"status": "error", "message": str(e)}
 
 def call_mcp_create_epic(summary: str, description: str, project_key: str = "PROJ") -> Dict:
-    """Call MCP server JIRA epic creation function via Gradio 4.x API"""
+    """Call MCP server JIRA epic creation function via Gradio Client"""
     try:
-        # Use fn_index=3 for Create Epic
-        response = requests.post(
-            f"{config.MCP_SERVER_URL}/api/predict",
-            json={"data": [summary, description, project_key], "fn_index": 3},
-            headers={"Content-Type": "application/json"},
-            timeout=config.API_TIMEOUT
-        )
-        response.raise_for_status()
-        result = response.json()
+        from gradio_client import Client
         
-        data = result.get("data", [])
-        if data:
-            result_data = data[0]
-            if isinstance(result_data, list):
-                result_data = result_data[0] if result_data else {}
-            if isinstance(result_data, dict):
-                return result_data
-            return {"status": "success", "data": result_data}
+        client = Client(config.MCP_SERVER_URL)
+        result = client.predict(summary, description, project_key, api_name="/create_jira_epic")
+        
+        if isinstance(result, dict):
+            return result
+        elif isinstance(result, list):
+            return result[0] if result else {"status": "error", "message": "No data returned"}
+        else:
+            return {"status": "success", "data": result}
             
-        return {"status": "error", "message": "No data returned"}
     except Exception as e:
         print(f"MCP Create Epic error: {e}")
         return {"status": "error", "message": str(e)}
 
 def call_mcp_create_user_story(epic_key: str, summary: str, description: str, story_points: int = None) -> Dict:
-    """Call MCP server JIRA user story creation function via Gradio 4.x API"""
+    """Call MCP server JIRA user story creation function via Gradio Client"""
     try:
-        # Use fn_index=4 for Create Story
-        response = requests.post(
-            f"{config.MCP_SERVER_URL}/api/predict",
-            json={"data": [epic_key, summary, description, story_points], "fn_index": 4},
-            headers={"Content-Type": "application/json"},
-            timeout=config.API_TIMEOUT
-        )
-        response.raise_for_status()
-        result = response.json()
+        from gradio_client import Client
         
-        data = result.get("data", [])
-        if data:
-            result_data = data[0]
-            if isinstance(result_data, list):
-                result_data = result_data[0] if result_data else {}
-            if isinstance(result_data, dict):
-                return result_data
-            return {"status": "success", "data": result_data}
+        client = Client(config.MCP_SERVER_URL)
+        result = client.predict(epic_key, summary, description, story_points, api_name="/create_jira_user_story")
+        
+        if isinstance(result, dict):
+            return result
+        elif isinstance(result, list):
+            return result[0] if result else {"status": "error", "message": "No data returned"}
+        else:
+            return {"status": "success", "data": result}
             
-        return {"status": "error", "message": "No data returned"}
     except Exception as e:
         print(f"MCP Create Story error: {e}")
         return {"status": "error", "message": str(e)}

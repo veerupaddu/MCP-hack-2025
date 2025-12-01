@@ -4,5 +4,6 @@ websockets==14.1
 python-multipart==0.0.20
 pydantic==2.10.3
 requests==2.32.3
+gradio_client>=1.0.0
 
 
