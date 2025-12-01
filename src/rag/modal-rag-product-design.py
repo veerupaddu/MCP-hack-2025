@@ -230,7 +230,8 @@ def load_product_design_docs():
 @app.function(
     image=image,
     volumes={"/insurance-data": vol},
-    timeout=900
+    gpu="T4",  # Enable GPU for faster embedding generation
+    timeout=1800  # Increased timeout to 30 minutes
 )
 def create_product_design_vector_db():
     """Create vector database from product design documents"""
