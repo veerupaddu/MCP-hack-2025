@@ -195,3 +195,77 @@ curl -X POST https://YOUR-MODAL-URL/ask \
 - **Logs**: `modal app logs mcp-hack::finetune-phi3-modal`
 - **Volumes**: `modal volume list`
 
+---
+
+## 🌐 Deploying to Hugging Face Spaces
+
+Deploy your MCP Server to Hugging Face Spaces for public access.
+
+### Prerequisites
+- Hugging Face account ([sign up here](https://huggingface.co))
+- Git configured locally
+
+### Step 1: Create a Space
+
+1. Go to [huggingface.co/new-space](https://huggingface.co/new-space)
+2. Configure the Space:
+   - **Owner**: Select your username or organization (e.g., `MCP-1st-Birthday`)
+   - **Space name**: Choose a name (e.g., `sdlc-agent`)
+   - **License**: MIT
+   - **SDK**: Gradio
+   - **Space hardware**: CPU basic (free)
+   - **Visibility**: Public
+3. Click **Create Space**
+
+### Step 2: Push Your Code
+
+```bash
+# Navigate to project root
+cd /Users/veeru/agents/mcp-hack
+
+# Add Hugging Face as a remote (replace ORG and SPACE_NAME)
+git remote add hf https://huggingface.co/spaces/ORG/SPACE_NAME
+
+# Ensure .env is ignored
+grep -q "mcp/.env" .gitignore || echo "mcp/.env" >> .gitignore
+
+# Pull initial Space files
+git pull hf main --allow-unrelated-histories
+
+# Resolve any conflicts (usually just README)
+git checkout --ours README.md
+git add README.md
+git commit -m "Merge Hugging Face Space initial files"
+
+# Push to Hugging Face
+git push hf main
+```
+
+### Step 3: Configure Secrets
+
+1. Go to your Space's **Settings** tab
+2. Scroll to **Repository secrets**
+3. Add these secrets:
+   - `JIRA_URL`
+   - `JIRA_EMAIL`
+   - `JIRA_API_TOKEN`
+   - `JIRA_PROJECT_KEY`
+   - `RAG_ENABLED` = `true`
+   - `RAG_API_URL`
+   - `FINETUNED_MODEL_API_URL`
+
+### Step 4: Monitor Deployment
+
+1. Check the **Logs** tab to monitor the build
+2. Once complete, your app will be live at:
+   ```
+   https://huggingface.co/spaces/ORG/SPACE_NAME
+   ```
+
+### Important Notes
+
+⚠️ **Limitations**:
+- Only the MCP Server (`mcp/mcp_server.py`) will be deployed
+- The Dashboard requires a separate deployment (use Render, Railway, or Fly.io)
+
+✅ **Your Space is now live and accessible to anyone!**
