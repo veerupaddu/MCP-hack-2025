@@ -73,6 +73,25 @@ state = WorkflowState()
 class RequirementInput(BaseModel):
     requirement: str
 
+# ===== Helper Functions =====
+def normalize_list(value):
+    """
+    Normalize a value that might be a list or an object with numeric keys.
+    Gradio sometimes serializes lists as {"0": "item1", "1": "item2", ...}
+    """
+    if isinstance(value, list):
+        return value
+    elif isinstance(value, dict):
+        # Check if it's an object with numeric string keys
+        try:
+            # Sort by numeric key and extract values
+            sorted_items = sorted(value.items(), key=lambda x: int(x[0]))
+            return [item[1] for item in sorted_items]
+        except (ValueError, TypeError):
+            # Not numeric keys, return as-is
+            return value
+    return value
+
 def call_mcp_rag(requirement: str) -> Dict:
     """Call MCP server RAG query function via Gradio 4.x API"""
     try:
@@ -313,6 +332,13 @@ async def run_workflow(requirement: str):
             spec = rag_result.get("specification") or rag_result.get("data", {})
             if isinstance(spec, list):
                 spec = spec[0] if spec else {}
+            
+            # Normalize list fields (Gradio may serialize lists as {"0": "...", "1": "..."})
+            if isinstance(spec, dict):
+                spec["features"] = normalize_list(spec.get("features", []))
+                spec["technical_requirements"] = normalize_list(spec.get("technical_requirements", []))
+                spec["acceptance_criteria"] = normalize_list(spec.get("acceptance_criteria", []))
+            
             await send_log(f"RAG query successful - {spec.get('context_retrieved', 0) if isinstance(spec, dict) else 0} contexts retrieved", "success")
         else:
             await send_log(f"RAG query failed: {rag_result.get('message', 'Unknown error')}", "warning")
@@ -335,13 +361,13 @@ async def run_workflow(requirement: str):
 {spec.get('summary', 'Generated from user requirement') if isinstance(spec, dict) else 'Generated from user requirement'}
 
 ## Features
-{chr(10).join('- ' + f for f in spec.get('features', [])) if isinstance(spec, dict) else '- Core Implementation\n- Testing'}
+{chr(10).join('- ' + f for f in spec.get('features', [])) if isinstance(spec, dict) and spec.get('features') else '- Core Implementation\n- Testing'}
 
 ## Technical Requirements
-{chr(10).join('- ' + t for t in spec.get('technical_requirements', [])) if isinstance(spec, dict) else '- TBD'}
+{chr(10).join('- ' + t for t in spec.get('technical_requirements', [])) if isinstance(spec, dict) and spec.get('technical_requirements') else '- TBD'}
 
 ## Acceptance Criteria
-{chr(10).join('- ' + a for a in spec.get('acceptance_criteria', [])) if isinstance(spec, dict) else '- TBD'}
+{chr(10).join('- ' + a for a in spec.get('acceptance_criteria', [])) if isinstance(spec, dict) and spec.get('acceptance_criteria') else '- TBD'}
 
 ## Estimated Effort
 {spec.get('estimated_effort', 'TBD') if isinstance(spec, dict) else 'TBD'}

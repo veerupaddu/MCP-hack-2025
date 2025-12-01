@@ -604,8 +604,8 @@ def refresh_epics_dropdown():
     """Refresh the choices for the epic dropdown"""
     choices = get_available_epics()
     if not choices:
-        return gr.Dropdown.update(choices=[], value=None, label="No Epics Found - Please Create an Epic First")
-    return gr.Dropdown.update(choices=choices, value=choices[0] if choices else None, label="Select Epic")
+        return gr.Dropdown(choices=[], value=None, label="No Epics Found - Please Create an Epic First")
+    return gr.Dropdown(choices=choices, value=choices[0] if choices else None, label="Select Epic")
 
 # ===== Gradio Interface =====
 def create_gradio_interface():
