@@ -425,21 +425,26 @@ function showStepConfirmation(stepId, data) {
     // Format data for display
     let contentHtml = '';
     if (data) {
-        contentHtml = Object.entries(data).map(([key, value]) => {
-            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            let displayValue = value;
-            if (Array.isArray(value)) {
-                displayValue = value.map(v => `• ${v}`).join('\n');
-            } else if (typeof value === 'object' && value !== null) {
-                displayValue = JSON.stringify(value, null, 2);
-            }
-            return `
-                <div class="data-item">
-                    <div class="data-label">${label}</div>
-                    <div class="data-value">${displayValue}</div>
-                </div>
-            `;
-        }).join('<div class="data-grid">') + '</div>';
+        // Special formatting for requirement analysis (step 1)
+        if (stepId === 1) {
+            contentHtml = formatRequirementAnalysis(data);
+        } else {
+            contentHtml = Object.entries(data).map(([key, value]) => {
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                let displayValue = value;
+                if (Array.isArray(value)) {
+                    displayValue = value.map(v => `• ${v}`).join('\n');
+                } else if (typeof value === 'object' && value !== null) {
+                    displayValue = JSON.stringify(value, null, 2);
+                }
+                return `
+                    <div class="data-item">
+                        <div class="data-label">${label}</div>
+                        <div class="data-value">${displayValue}</div>
+                    </div>
+                `;
+            }).join('<div class="data-grid">') + '</div>';
+        }
     } else {
         contentHtml = '<p>Step completed. Proceed to next step?</p>';
     }
@@ -453,6 +458,89 @@ function showStepConfirmation(stepId, data) {
     `;
 
     elements.detailsModal.classList.add('active');
+}
+
+// Format requirement analysis data nicely
+function formatRequirementAnalysis(data) {
+    const sections = [];
+    
+    // 1. Actual Question/Requirement
+    if (data.user_query) {
+        sections.push(`
+            <div class="analysis-section question">
+                <h4>📝 Requirement</h4>
+                <p class="analysis-text">${escapeHtml(data.user_query)}</p>
+            </div>
+        `);
+    }
+    
+    // 2. Summary (200-500 words)
+    if (data.summary) {
+        sections.push(`
+            <div class="analysis-section summary">
+                <h4>📋 Summary</h4>
+                <p class="analysis-text">${escapeHtml(data.summary)}</p>
+            </div>
+        `);
+    }
+    
+    // 3. Complexity to Develop
+    if (data.complexity) {
+        const complexityClass = getComplexityClass(data.complexity.level);
+        sections.push(`
+            <div class="analysis-section complexity">
+                <h4>⚙️ Development Complexity</h4>
+                <div class="complexity-card ${complexityClass}">
+                    <div class="complexity-header">
+                        <span class="complexity-level">${data.complexity.level}</span>
+                        <span class="complexity-estimate">${data.complexity.estimate || ''}</span>
+                    </div>
+                    ${data.complexity.factors ? `
+                        <div class="complexity-factors">
+                            ${data.complexity.factors.map(f => `<span class="factor-tag">${escapeHtml(f)}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `);
+    }
+    
+    // Source badge
+    if (data.source) {
+        sections.push(`<div class="analysis-meta"><span class="meta-badge source">🔗 ${data.source}</span></div>`);
+    }
+    
+    return `<div class="analysis-container">${sections.join('')}</div>`;
+}
+
+function getComplexityClass(level) {
+    if (!level) return '';
+    const l = level.toLowerCase();
+    if (l.includes('low') || l.includes('simple')) return 'complexity-low';
+    if (l.includes('high') || l.includes('complex')) return 'complexity-high';
+    return 'complexity-medium';
+}
+
+// Get icon for actor type
+function getActorIcon(actor) {
+    const actorLower = actor.toLowerCase();
+    if (actorLower.includes('admin')) return '👨‍💼';
+    if (actorLower.includes('user') || actorLower.includes('customer')) return '👤';
+    if (actorLower.includes('developer') || actorLower.includes('dev')) return '👨‍💻';
+    if (actorLower.includes('manager')) return '👔';
+    if (actorLower.includes('system') || actorLower.includes('service')) return '🤖';
+    if (actorLower.includes('guest') || actorLower.includes('visitor')) return '👁️';
+    if (actorLower.includes('moderator')) return '🛡️';
+    if (actorLower.includes('support')) return '🎧';
+    return '👤';
+}
+
+// Helper to escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 window.confirmStep = function (stepId) {

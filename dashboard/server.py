@@ -284,6 +284,90 @@ def call_llm_api(prompt: str, system_prompt: str = None, max_tokens: int = 256, 
         print(f"DEBUG: LLM API exception: {e}")
         return {"status": "error", "message": str(e), "source": "llm_api"}
 
+def generate_summary(requirement: str, llm_response: str = "") -> str:
+    """Generate a 200-500 word summary based on requirement"""
+    req_len = len(requirement)
+    req_lower = requirement.lower()
+    
+    # Use LLM response if good
+    if llm_response and len(llm_response) > 100:
+        words = llm_response.strip().split()
+        if len(words) > 500:
+            return ' '.join(words[:500]) + '...'
+        return llm_response.strip()
+    
+    # Build summary
+    parts = ["This requirement describes a software feature that needs development."]
+    
+    # Feature type
+    if 'login' in req_lower or 'auth' in req_lower:
+        parts.append("The feature involves user authentication and access control. This includes secure login flows, session management, and potentially role-based permissions.")
+    elif 'dashboard' in req_lower or 'report' in req_lower:
+        parts.append("The feature focuses on data visualization and reporting. This requires aggregating data, creating visual components, and ensuring responsive design.")
+    elif 'api' in req_lower or 'integration' in req_lower:
+        parts.append("The feature requires API development and integration. This involves endpoint design, request validation, error handling, and documentation.")
+    elif 'search' in req_lower or 'filter' in req_lower:
+        parts.append("The feature involves search and filtering functionality. This requires efficient query design, indexing strategy, and user-friendly interface.")
+    else:
+        parts.append("The feature requires careful analysis of user needs and technical constraints to deliver a robust solution.")
+    
+    # Scope
+    if req_len > 300:
+        parts.append("Given the detailed requirements, this is a comprehensive feature with multiple components requiring careful planning and phased implementation.")
+    elif req_len > 150:
+        parts.append("The requirements outline a moderately scoped feature with clear objectives that can be delivered incrementally.")
+    else:
+        parts.append("The requirements describe a focused feature with specific goals suitable for rapid development.")
+    
+    parts.append("Implementation will require proper architecture design, database schema planning, and API endpoint definition. Testing should cover unit tests, integration tests, and user acceptance criteria.")
+    
+    return ' '.join(parts)
+
+def estimate_complexity(requirement: str) -> Dict:
+    """Estimate development complexity"""
+    req_lower = requirement.lower()
+    factors = []
+    score = 0
+    
+    # Complexity indicators
+    if any(w in req_lower for w in ['integration', 'api', 'third-party', 'external']):
+        factors.append("External Integration")
+        score += 2
+    if any(w in req_lower for w in ['auth', 'login', 'security', 'permission', 'role']):
+        factors.append("Security/Auth")
+        score += 2
+    if any(w in req_lower for w in ['real-time', 'websocket', 'notification', 'live']):
+        factors.append("Real-time Features")
+        score += 3
+    if any(w in req_lower for w in ['report', 'analytics', 'dashboard', 'chart']):
+        factors.append("Data Analytics")
+        score += 2
+    if any(w in req_lower for w in ['payment', 'transaction', 'billing']):
+        factors.append("Payment Processing")
+        score += 3
+    if any(w in req_lower for w in ['search', 'filter', 'sort']):
+        factors.append("Search/Filter")
+        score += 1
+    
+    # Length-based
+    if len(requirement) > 500:
+        score += 2
+    elif len(requirement) > 200:
+        score += 1
+    
+    # Determine level
+    if score >= 6:
+        level, estimate = "High", "3-4 weeks"
+    elif score >= 3:
+        level, estimate = "Medium", "1-2 weeks"
+    else:
+        level, estimate = "Low", "3-5 days"
+    
+    if not factors:
+        factors = ["Standard CRUD", "Basic UI"]
+    
+    return {"level": level, "estimate": estimate, "factors": factors[:5]}
+
 def call_llm_chat(message: str, system_prompt: str = "You are a helpful AI assistant.", max_tokens: int = 256) -> Dict:
     """Call the LLM API chat endpoint"""
     try:
@@ -452,13 +536,9 @@ Provide a structured analysis."""
 
         analysis_data = {
             "user_query": requirement,
-            "input_length": len(requirement),
-            "key_actors": [],
-            "requirements_description": "",
-            "possible_actions": [],
-            "technical_considerations": [],
-            "complexity_score": "Medium",
-            "detected_intent": "Feature Implementation"
+            "summary": "",
+            "complexity": {},
+            "source": ""
         }
         
         try:
@@ -472,46 +552,9 @@ Provide a structured analysis."""
                 result = response.json()
                 answer = result.get("answer", "")
                 
-                # Parse the FM response to extract structured data
-                lines = answer.split('\n')
-                current_section = None
-                
-                for line in lines:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    
-                    lower_line = line.lower()
-                    if 'actor' in lower_line or 'user' in lower_line and ':' in line:
-                        current_section = 'actors'
-                    elif 'requirement' in lower_line and ':' in line:
-                        current_section = 'requirements'
-                    elif 'action' in lower_line and ':' in line:
-                        current_section = 'actions'
-                    elif 'technical' in lower_line or 'consideration' in lower_line:
-                        current_section = 'technical'
-                    elif line.startswith(('-', '•', '*', '1', '2', '3', '4', '5')):
-                        item = line.lstrip('-•*0123456789. ')
-                        if current_section == 'actors' and item:
-                            analysis_data["key_actors"].append(item)
-                        elif current_section == 'actions' and item:
-                            analysis_data["possible_actions"].append(item)
-                        elif current_section == 'technical' and item:
-                            analysis_data["technical_considerations"].append(item)
-                    elif current_section == 'requirements' and line:
-                        analysis_data["requirements_description"] += line + " "
-                
-                # Set defaults if parsing didn't find items
-                if not analysis_data["key_actors"]:
-                    analysis_data["key_actors"] = ["End User", "System Administrator", "Developer"]
-                if not analysis_data["possible_actions"]:
-                    analysis_data["possible_actions"] = ["Create", "Read", "Update", "Delete", "Search"]
-                if not analysis_data["technical_considerations"]:
-                    analysis_data["technical_considerations"] = ["Security", "Scalability", "Performance", "Usability"]
-                if not analysis_data["requirements_description"]:
-                    analysis_data["requirements_description"] = requirement
-                
-                analysis_data["fm_response"] = answer
+                # Generate summary and complexity
+                analysis_data["summary"] = generate_summary(requirement, answer)
+                analysis_data["complexity"] = estimate_complexity(requirement)
                 analysis_data["source"] = "fm_inference"
                 await send_log("FM inference analysis complete", "success")
             else:
@@ -530,31 +573,16 @@ Provide a structured analysis."""
             
             if llm_result.get("status") == "success":
                 answer = llm_result.get("text", "")
-                # Parse LLM response
-                lines = answer.split('\n')
-                for line in lines:
-                    line = line.strip()
-                    if line.startswith(('-', '•', '*', '1', '2', '3', '4', '5')):
-                        item = line.lstrip('-•*0123456789. ')
-                        if 'user' in item.lower() or 'admin' in item.lower() or 'developer' in item.lower():
-                            analysis_data["key_actors"].append(item)
-                        elif any(word in item.lower() for word in ['create', 'read', 'update', 'delete', 'search', 'view']):
-                            analysis_data["possible_actions"].append(item)
-                        elif any(word in item.lower() for word in ['security', 'performance', 'scalable', 'api', 'database']):
-                            analysis_data["technical_considerations"].append(item)
-                
-                analysis_data["llm_response"] = answer
-                analysis_data["source"] = "llm_api_fallback"
-                analysis_data["model"] = llm_result.get("model", "unknown")
-                await send_log(f"LLM API analysis complete ({llm_result.get('latency_ms', 0)}ms)", "success")
+                analysis_data["summary"] = generate_summary(requirement, answer)
+                analysis_data["complexity"] = estimate_complexity(requirement)
+                analysis_data["source"] = "llm_api"
+                await send_log(f"LLM analysis complete ({llm_result.get('latency_ms', 0)}ms)", "success")
             else:
                 # Final fallback - static analysis
-                analysis_data["key_actors"] = ["End User", "System Administrator", "Developer"]
-                analysis_data["requirements_description"] = requirement
-                analysis_data["possible_actions"] = ["Create", "Read", "Update", "Delete", "Search"]
-                analysis_data["technical_considerations"] = ["Security", "Scalability", "Performance"]
-                analysis_data["source"] = "static_fallback"
-                await send_log("Using static fallback analysis", "warning")
+                analysis_data["summary"] = generate_summary(requirement, "")
+                analysis_data["complexity"] = estimate_complexity(requirement)
+                analysis_data["source"] = "static"
+                await send_log("Using static analysis", "warning")
         
         await update_step(1, "complete", "Analysis complete", "Requirement analyzed successfully", data=analysis_data)
         await send_log("Requirement analysis complete", "success")
