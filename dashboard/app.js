@@ -39,6 +39,7 @@ const elements = {
     textarea: document.getElementById('requirement'),
     charCount: document.getElementById('charCount'),
     submitBtn: document.getElementById('submitBtn'),
+    stopBtn: document.getElementById('stopBtn'),
     connectionStatus: document.getElementById('connectionStatus'),
     progressFill: document.getElementById('progressFill'),
     progressPercentage: document.getElementById('progressPercentage'),
@@ -68,7 +69,7 @@ function updateConnectionStatus(connected) {
     state.connected = connected;
     const statusDot = elements.connectionStatus.querySelector('.status-dot');
     const statusText = elements.connectionStatus.querySelector('.status-text');
-    
+
     if (connected) {
         statusDot.style.backgroundColor = '#4ade80';
         statusText.textContent = 'Connected';
@@ -83,7 +84,7 @@ function updateConnectionStatus(connected) {
 function updateProgress() {
     const completedSteps = state.steps.filter(s => s.status === 'complete').length;
     const percentage = Math.round((completedSteps / state.steps.length) * 100);
-    
+
     elements.progressFill.style.width = `${percentage}%`;
     elements.progressPercentage.textContent = `${percentage}%`;
 }
@@ -118,7 +119,7 @@ function renderActivityLog() {
         `;
         return;
     }
-    
+
     elements.activityLog.innerHTML = state.activityLog
         .slice(-50) // Keep last 50 entries
         .reverse()
@@ -128,7 +129,7 @@ function renderActivityLog() {
                 <span class="log-message">${entry.message}</span>
             </div>
         `).join('');
-    
+
     // Auto-scroll to top (newest entries)
     elements.activityLog.scrollTop = 0;
 }
@@ -150,13 +151,13 @@ function renderFileList() {
         `;
         return;
     }
-    
+
     elements.fileList.innerHTML = state.modifiedFiles.map(file => {
         let statusIcon = '📄';
         if (file.status === 'added') statusIcon = '➕';
         else if (file.status === 'modified') statusIcon = '✏️';
         else if (file.status === 'deleted') statusIcon = '🗑️';
-        
+
         return `
             <div class="file-item file-${file.status}">
                 <span class="file-icon">${statusIcon}</span>
@@ -168,31 +169,34 @@ function renderFileList() {
 }
 
 // ===== Workflow Steps Rendering =====
+function restartFromStep(stepId) {
+    // Reset steps after the selected one
+    state.steps = state.steps.map(s => {
+        if (s.id < stepId) return { ...s, status: 'complete' };
+        if (s.id === stepId) return { ...s, status: 'in-progress', details: '', data: null };
+        return { ...s, status: 'pending', details: '', data: null };
+    });
+    renderWorkflowSteps();
+    updateProgress();
+    addActivityLog(`User restarted workflow from step ${stepId}`, 'info');
+    // Notify backend (optional – send a custom WS message)
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ type: 'restart_step', stepId }));
+    }
+}
+
+// Updated renderWorkflowSteps to include a restart button
 function renderWorkflowSteps() {
     elements.workflowSteps.innerHTML = state.steps.map(step => {
         let statusIcon = '⏳';
         let statusText = 'Pending';
         let statusClass = 'pending';
-
-        if (step.status === 'complete') {
-            statusIcon = '✅';
-            statusText = 'Complete';
-            statusClass = 'complete';
-        } else if (step.status === 'in-progress') {
-            statusIcon = '🔄';
-            statusText = 'In Progress';
-            statusClass = 'in-progress';
-        } else if (step.status === 'error') {
-            statusIcon = '❌';
-            statusText = 'Error';
-            statusClass = 'error';
-        }
-
+        if (step.status === 'complete') { statusIcon = '✅'; statusText = 'Complete'; statusClass = 'complete'; }
+        else if (step.status === 'in-progress') { statusIcon = '🔄'; statusText = 'In Progress'; statusClass = 'in-progress'; }
+        else if (step.status === 'error') { statusIcon = '❌'; statusText = 'Error'; statusClass = 'error'; }
         const hasData = step.data && Object.keys(step.data).length > 0;
-        const detailsBtn = hasData
-            ? `<button class="btn-details" onclick="showStepDetails(${step.id})">View Details</button>`
-            : '';
-
+        const detailsBtn = hasData ? `<button class="btn-details" onclick="showStepDetails(${step.id})">View Details</button>` : '';
+        const restartBtn = step.status !== 'in-progress' ? `<button class="btn-restart" onclick="restartFromStep(${step.id})">Restart</button>` : '';
         return `
             <div class="step ${statusClass}">
                 <div class="step-number">${step.id}</div>
@@ -202,6 +206,7 @@ function renderWorkflowSteps() {
                     <div class="step-status">${statusIcon} ${statusText}${step.details ? ` - ${step.details}` : ''}</div>
                 </div>
                 ${detailsBtn}
+                ${restartBtn}
             </div>
         `;
     }).join('');
@@ -222,7 +227,7 @@ function updateStepStatus(stepId, status, details = '', data = null) {
 
 
 // ===== Modal Logic =====
-window.showStepDetails = function(stepId) {
+window.showStepDetails = function (stepId) {
     const step = state.steps.find(s => s.id === stepId);
     if (!step || !step.data) return;
 
@@ -375,21 +380,112 @@ function handleWebSocketMessage(data) {
             // Re-enable form
             elements.submitBtn.disabled = false;
             elements.textarea.disabled = false;
+            elements.stopBtn.style.display = 'none';
             break;
 
         case 'workflow_error':
             addActivityLog(`Error: ${data.message}`, 'error');
             showErrorModal(data.title || 'Workflow Error', data.message, data.details);
+            elements.stopBtn.style.display = 'none';
+            elements.submitBtn.disabled = false;
+            elements.textarea.disabled = false;
             break;
 
         case 'error':
             addActivityLog(`Error: ${data.message}`, 'error');
             break;
 
+        // Human-in-the-loop messages
+        case 'requirement_analyzed':
+        case 'rag_completed':
+        case 'git_branch_created':
+        case 'code_generated':
+        case 'code_reviewed':
+        case 'git_committed':
+        case 'unit_tested':
+        case 'manual_approval_requested':
+        case 'pr_submitted':
+        case 'pr_merged':
+        case 'step_complete':
+            // Show confirmation modal
+            showStepConfirmation(data.stepId, data.data);
+            break;
+
         default:
             console.log('Unknown message type:', data.type);
     }
 }
+
+function showStepConfirmation(stepId, data) {
+    const step = state.steps.find(s => s.id === stepId);
+    if (!step) return;
+
+    elements.modalTitle.textContent = `${step.icon} ${step.name} - Confirmation`;
+
+    // Format data for display
+    let contentHtml = '';
+    if (data) {
+        contentHtml = Object.entries(data).map(([key, value]) => {
+            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            let displayValue = value;
+            if (Array.isArray(value)) {
+                displayValue = value.map(v => `• ${v}`).join('\n');
+            } else if (typeof value === 'object' && value !== null) {
+                displayValue = JSON.stringify(value, null, 2);
+            }
+            return `
+                <div class="data-item">
+                    <div class="data-label">${label}</div>
+                    <div class="data-value">${displayValue}</div>
+                </div>
+            `;
+        }).join('<div class="data-grid">') + '</div>';
+    } else {
+        contentHtml = '<p>Step completed. Proceed to next step?</p>';
+    }
+
+    elements.modalBody.innerHTML = `
+        ${contentHtml}
+        <div class="modal-footer" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;">
+            <button class="btn btn-secondary" onclick="resetWorkflowForEdit()">Modify Requirement</button>
+            <button class="btn btn-primary" onclick="confirmStep(${stepId})">Proceed</button>
+        </div>
+    `;
+
+    elements.detailsModal.classList.add('active');
+}
+
+window.confirmStep = function (stepId) {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ type: 'confirm_step', stepId }));
+        closeModal();
+        addActivityLog(`User confirmed step ${stepId}`, 'success');
+    }
+};
+
+window.resetWorkflowForEdit = function () {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ type: 'modify_step' }));
+    }
+    closeModal();
+
+    // Reset UI
+    elements.submitBtn.disabled = false;
+    elements.textarea.disabled = false;
+    elements.stopBtn.style.display = 'none';
+    elements.textarea.focus();
+
+    addActivityLog('Workflow reset for modification', 'info');
+};
+
+window.stopWorkflow = function () {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ type: 'stop_workflow' }));
+        addActivityLog('Stopping workflow...', 'warning');
+        elements.stopBtn.disabled = true;
+        elements.stopBtn.querySelector('.btn-text').textContent = 'Stopping...';
+    }
+};
 
 // ===== Form Submission =====
 async function handleSubmit(event) {
@@ -419,6 +515,9 @@ async function handleSubmit(event) {
     updateProgress();
 
     addActivityLog('Submitting requirement...', 'info');
+    elements.stopBtn.style.display = 'flex';
+    elements.stopBtn.disabled = false;
+    elements.stopBtn.querySelector('.btn-text').textContent = 'Stop';
 
     try {
         const response = await fetch(`${CONFIG.apiUrl}/submit-requirement`, {
@@ -450,6 +549,7 @@ async function handleSubmit(event) {
 // ===== Event Listeners =====
 elements.textarea.addEventListener('input', updateCharCount);
 elements.form.addEventListener('submit', handleSubmit);
+elements.stopBtn.addEventListener('click', stopWorkflow);
 
 // ===== Initialization =====
 function init() {
