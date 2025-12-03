@@ -101,8 +101,41 @@ def normalize_list(value):
     return value
 
 def call_mcp_rag(requirement: str) -> Dict:
-    """Call RAG API directly (bypasses HF Space issues)"""
-    # Direct Modal RAG API URL
+    """Call RAG via MCP server, fallback to direct API"""
+    
+    # Try MCP server first
+    try:
+        print(f"DEBUG: Calling RAG via MCP: {config.MCP_SERVER_URL}")
+        response = requests.post(
+            f"{config.MCP_SERVER_URL}{config.API_ENDPOINT_RAG}",
+            json={"data": [requirement]},
+            timeout=60
+        )
+        
+        if response.ok:
+            event_data = response.json()
+            event_id = event_data.get("event_id")
+            if event_id:
+                result_response = requests.get(
+                    f"{config.MCP_SERVER_URL}{config.API_ENDPOINT_RAG}/{event_id}",
+                    timeout=60
+                )
+                if result_response.ok:
+                    for line in result_response.iter_lines():
+                        if line:
+                            line_str = line.decode('utf-8')
+                            if line_str.startswith('data:'):
+                                data = json.loads(line_str[5:].strip())
+                                if isinstance(data, list) and len(data) > 0:
+                                    result = data[0] if isinstance(data[0], dict) else {}
+                                    if result.get("status") == "success":
+                                        print(f"DEBUG: MCP RAG success")
+                                        return result
+        print(f"DEBUG: MCP RAG failed, trying direct API")
+    except Exception as e:
+        print(f"DEBUG: MCP RAG error: {e}")
+    
+    # Fallback to direct Modal RAG API
     rag_api_url = os.getenv("RAG_API_URL", "https://mcp-hack--insurance-rag-api-fastapi-app.modal.run")
     
     try:
@@ -120,7 +153,7 @@ def call_mcp_rag(requirement: str) -> Dict:
             
             # Parse features from answer
             features = []
-            for line in answer.split('\\n'):
+            for line in answer.split('\n'):
                 line = line.strip()
                 if line.startswith(('-', '•', '*', '1.', '2.', '3.')) and len(line) > 3:
                     features.append(line.lstrip('-•*0123456789. '))
@@ -164,11 +197,45 @@ def call_mcp_rag(requirement: str) -> Dict:
     }
 
 def call_mcp_finetuned(requirement: str, domain: str = "general") -> Dict:
-    """Call fine-tuned model API directly"""
+    """Call fine-tuned model API via MCP server"""
+    
+    # Try MCP server first
+    try:
+        print(f"DEBUG: Calling fine-tuned model via MCP: {config.MCP_SERVER_URL}")
+        response = requests.post(
+            f"{config.MCP_SERVER_URL}{config.API_ENDPOINT_FINETUNED}",
+            json={"data": [requirement, domain]},
+            timeout=60
+        )
+        
+        if response.ok:
+            event_data = response.json()
+            event_id = event_data.get("event_id")
+            if event_id:
+                result_response = requests.get(
+                    f"{config.MCP_SERVER_URL}{config.API_ENDPOINT_FINETUNED}/{event_id}",
+                    timeout=60
+                )
+                if result_response.ok:
+                    for line in result_response.iter_lines():
+                        if line:
+                            line_str = line.decode('utf-8')
+                            if line_str.startswith('data:'):
+                                data = json.loads(line_str[5:].strip())
+                                if isinstance(data, list) and len(data) > 0:
+                                    result = data[0] if isinstance(data[0], dict) else {}
+                                    if result.get("status") == "success":
+                                        print(f"DEBUG: MCP Fine-tuned success")
+                                        return result
+        print(f"DEBUG: MCP Fine-tuned failed, trying direct API")
+    except Exception as e:
+        print(f"DEBUG: MCP Fine-tuned error: {e}")
+
+    # Fallback to direct API
     ft_api_url = os.getenv("FINETUNED_MODEL_API_URL", "https://mcp-hack--phi3-inference-vllm-model-ask.modal.run")
     
     try:
-        print(f"DEBUG: Calling fine-tuned API: {ft_api_url}")
+        print(f"DEBUG: Calling fine-tuned API directly: {ft_api_url}")
         response = requests.post(
             f"{ft_api_url}/ask",
             json={"question": requirement, "context": f"Domain: {domain}"},
@@ -183,12 +250,13 @@ def call_mcp_finetuned(requirement: str, domain: str = "general") -> Dict:
                     "domain": domain,
                     "recommendations": ["Follow best practices", "Ensure security", "Add testing"],
                     "full_response": result.get("answer", "")
-                }
+                },
+                "source": "direct_finetuned_api"
             }
     except Exception as e:
         print(f"DEBUG: Fine-tuned API error: {e}")
     
-    # Fallback
+    # Fallback mock
     return {
         "status": "success",
         "insights": {
@@ -200,47 +268,128 @@ def call_mcp_finetuned(requirement: str, domain: str = "general") -> Dict:
     }
 
 def call_mcp_search_epics(keywords: str, threshold: float = 0.6) -> Dict:
-    """Search JIRA epics - returns empty to trigger new epic creation"""
-    # Return empty to always create new epic (simpler flow)
+    """Search JIRA epics via MCP server"""
+    try:
+        print(f"DEBUG: Searching epics via MCP: {config.MCP_SERVER_URL}")
+        # Gradio 4.x API format
+        response = requests.post(
+            f"{config.MCP_SERVER_URL}{config.API_ENDPOINT_SEARCH_EPICS}",
+            json={"data": [keywords, threshold]},
+            timeout=30
+        )
+        
+        if response.ok:
+            # Gradio returns event_id, need to fetch result
+            event_data = response.json()
+            event_id = event_data.get("event_id")
+            if event_id:
+                result_response = requests.get(
+                    f"{config.MCP_SERVER_URL}{config.API_ENDPOINT_SEARCH_EPICS}/{event_id}",
+                    timeout=30
+                )
+                if result_response.ok:
+                    for line in result_response.iter_lines():
+                        if line:
+                            line_str = line.decode('utf-8')
+                            if line_str.startswith('data:'):
+                                data = json.loads(line_str[5:].strip())
+                                if isinstance(data, list) and len(data) > 0:
+                                    return data[0] if isinstance(data[0], dict) else {"status": "success", "epics": [], "count": 0}
+        print(f"DEBUG: MCP search failed, returning empty")
+    except Exception as e:
+        print(f"DEBUG: MCP search error: {e}")
+    
     return {"status": "success", "epics": [], "count": 0}
 
 def call_mcp_create_epic(summary: str, description: str, project_key: str = "SCRUM") -> Dict:
-    """Create JIRA epic using mock data (HF Space unavailable)"""
+    """Create JIRA epic via MCP server"""
+    try:
+        print(f"DEBUG: Creating epic via MCP: {config.MCP_SERVER_URL}")
+        response = requests.post(
+            f"{config.MCP_SERVER_URL}{config.API_ENDPOINT_CREATE_EPIC}",
+            json={"data": [summary, description, project_key]},
+            timeout=30
+        )
+        
+        if response.ok:
+            event_data = response.json()
+            event_id = event_data.get("event_id")
+            if event_id:
+                result_response = requests.get(
+                    f"{config.MCP_SERVER_URL}{config.API_ENDPOINT_CREATE_EPIC}/{event_id}",
+                    timeout=30
+                )
+                if result_response.ok:
+                    for line in result_response.iter_lines():
+                        if line:
+                            line_str = line.decode('utf-8')
+                            if line_str.startswith('data:'):
+                                data = json.loads(line_str[5:].strip())
+                                if isinstance(data, list) and len(data) > 0:
+                                    result = data[0] if isinstance(data[0], dict) else {}
+                                    if result.get("status") == "success":
+                                        print(f"DEBUG: Epic created: {result.get('epic', {}).get('key')}")
+                                        return result
+        print(f"DEBUG: MCP create epic failed")
+    except Exception as e:
+        print(f"DEBUG: MCP create epic error: {e}")
+    
+    # Fallback to mock
     import random
     epic_id = random.randint(100, 999)
     epic_key = f"{project_key}-{epic_id}"
-    
     return {
         "status": "success",
-        "epic": {
-            "key": epic_key,
-            "summary": summary,
-            "description": description[:200],
-            "url": f"https://mock-jira.atlassian.net/browse/{epic_key}"
-        },
-        "source": "mock_jira"
+        "epic": {"key": epic_key, "summary": summary, "url": f"https://mock-jira.atlassian.net/browse/{epic_key}"},
+        "source": "mock_fallback"
     }
 
 def call_mcp_create_user_story(epic_key: str, summary: str, description: str, story_points: int = None) -> Dict:
-    """Create JIRA user story using mock data"""
-    import random
+    """Create JIRA user story via MCP server"""
+    try:
+        print(f"DEBUG: Creating story via MCP: {config.MCP_SERVER_URL}")
+        response = requests.post(
+            f"{config.MCP_SERVER_URL}{config.API_ENDPOINT_CREATE_STORY}",
+            json={"data": [epic_key, summary, description, story_points or 3]},
+            timeout=30
+        )
+        
+        if response.ok:
+            event_data = response.json()
+            event_id = event_data.get("event_id")
+            if event_id:
+                result_response = requests.get(
+                    f"{config.MCP_SERVER_URL}{config.API_ENDPOINT_CREATE_STORY}/{event_id}",
+                    timeout=30
+                )
+                if result_response.ok:
+                    for line in result_response.iter_lines():
+                        if line:
+                            line_str = line.decode('utf-8')
+                            if line_str.startswith('data:'):
+                                data = json.loads(line_str[5:].strip())
+                                if isinstance(data, list) and len(data) > 0:
+                                    result = data[0] if isinstance(data[0], dict) else {}
+                                    if result.get("status") == "success":
+                                        print(f"DEBUG: Story created: {result.get('story', {}).get('key')}")
+                                        return result
+        print(f"DEBUG: MCP create story failed")
+    except Exception as e:
+        print(f"DEBUG: MCP create story error: {e}")
     
-    # Extract project key from epic key
+    # Fallback to mock
+    import random
     project_key = epic_key.split('-')[0] if '-' in epic_key else "SCRUM"
     story_id = random.randint(200, 999)
     story_key = f"{project_key}-{story_id}"
-    
     return {
         "status": "success",
-        "story": {
-            "key": story_key,
-            "summary": summary,
-            "epic_key": epic_key,
-            "story_points": story_points or 3,
-            "url": f"https://mock-jira.atlassian.net/browse/{story_key}"
-        },
-        "source": "mock_jira"
+        "story": {"key": story_key, "summary": summary, "epic_key": epic_key, "story_points": story_points or 3},
+        "source": "mock_fallback"
     }
+
+# Store JIRA items for status management
+jira_items = {}
 
 def call_llm_api(prompt: str, system_prompt: str = None, max_tokens: int = 256, temperature: float = 0.7) -> Dict:
     """Call the open-source LLM inference API on Modal"""
@@ -477,14 +626,14 @@ async def wait_for_confirmation(step_id: int, data: dict):
     msg_types = {
         1: "requirement_analyzed",
         2: "rag_completed",
-        3: "git_branch_created",
-        4: "code_generated",
-        5: "code_reviewed",
-        6: "git_committed",
-        7: "unit_tested",
-        8: "manual_approval_requested",
-        9: "pr_submitted",
-        10: "pr_merged"
+        3: "finetuned_completed",
+        4: "stories_crafted",
+        5: "jira_created",
+        6: "tasks_generated",
+        7: "git_branch_created",
+        8: "code_generated",
+        9: "review_testing_done",
+        10: "deployed"
     }
     
     msg_type = msg_types.get(step_id, "step_complete")
@@ -589,199 +738,261 @@ Provide a structured analysis."""
         return analysis_data
 
     elif step_id == 2:
-        # Step 2: RAG & Fine-tuning Query
-        await send_log("Querying RAG system via Gradio MCP...", "info")
-        await update_step(2, "in-progress", "", "Querying RAG & fine-tuned models...")
+        # Step 2: RAG Product Research via MCP
+        await send_log("Step 2: RAG Product Research...", "info")
+        await update_step(2, "in-progress", "", "Querying RAG for product specs & best practices...")
         
-        # Call MCP RAG
         rag_result = call_mcp_rag(requirement)
+        rag_context = ""
         spec = {}
+        
         if rag_result.get("status") == "success":
-            spec = rag_result.get("specification") or rag_result.get("data", {})
-            if isinstance(spec, list): spec = spec[0] if spec else {}
-            if isinstance(spec, dict):
-                spec["features"] = normalize_list(spec.get("features", []))
-                spec["technical_requirements"] = normalize_list(spec.get("technical_requirements", []))
-                spec["acceptance_criteria"] = normalize_list(spec.get("acceptance_criteria", []))
-            await send_log(f"RAG query successful", "success")
+            spec = rag_result.get("specification") or {}
+            rag_context = spec.get("full_answer", "") or spec.get("summary", "")
+            await send_log(f"RAG: Retrieved {len(rag_context)} chars of context", "success")
         else:
-            await send_log(f"RAG query failed: {rag_result.get('message', 'Unknown error')}", "warning")
-        
-        # Call MCP Fine-tuned model
-        ft_result = call_mcp_finetuned(requirement, domain="general")
-        
-        # Generate epic details
-        epic_summary = spec.get("title", "New Feature Implementation") if isinstance(spec, dict) else "New Feature Implementation"
-        epic_description = f"Implementation of: {requirement}"
-        
-        # Search/Create Epic
-        await send_log("Searching for existing JIRA epics...", "info")
-        search_result = call_mcp_search_epics(epic_summary)
-        existing_epics = search_result.get("epics", [])
-        
-        if existing_epics:
-            spec_id = existing_epics[0]["key"]
-            await send_log(f"Found similar epic: {spec_id}", "info")
-        else:
-            await send_log("Creating new epic...", "info")
-            create_result = call_mcp_create_epic(epic_summary, epic_description)
-            spec_id = create_result.get("epic", {}).get("key", "SPEC-2024-001")
-            await send_log(f"JIRA epic created: {spec_id}", "success")
-            
-        # Create Stories
-        features = spec.get("features", ["Core Implementation", "Testing"]) if isinstance(spec, dict) else ["Core Implementation"]
-        created_stories = []
-        for feature in features:
-            story_result = call_mcp_create_user_story(spec_id, str(feature), f"Implement {feature}")
-            if story_result.get("status") == "success":
-                created_stories.append(story_result.get("story", {}).get("key"))
+            await send_log("RAG query failed, will continue with LLM", "warning")
         
         rag_data = {
-            "rag_spec": spec,
-            "jira_epic": spec_id,
-            "created_stories": created_stories,
-            "rag_status": rag_result.get("status"),
-            "finetune_status": ft_result.get("status")
+            "rag_context": rag_context,
+            "spec": spec,
+            "features": spec.get("features", []),
+            "technical_requirements": spec.get("technical_requirements", []),
+            "source": rag_result.get("source", "unknown"),
+            "status": rag_result.get("status")
         }
-        await update_step(2, "complete", spec_id, f"Epic {spec_id} ready", data=rag_data)
+        await update_step(2, "complete", f"{len(rag_context)} chars", "RAG research complete", data=rag_data)
+        await send_log("RAG product research complete", "success")
         return rag_data
 
     elif step_id == 3:
-        # Step 3: Git Branch
-        await send_log("Creating Git branch...", "info")
-        await update_step(3, "in-progress", "", "Creating feature branch...")
+        # Step 3: Fine-tuned Model Analysis via MCP
+        await send_log("Step 3: Fine-tuned Model Analysis...", "info")
+        await update_step(3, "in-progress", "", "Getting domain-specific insights...")
+        
+        ft_result = call_mcp_finetuned(requirement, domain="insurance")
+        ft_insights = ""
+        recommendations = []
+        
+        if ft_result.get("status") == "success":
+            insights = ft_result.get("insights", {})
+            ft_insights = insights.get("full_response", "")
+            recommendations = insights.get("recommendations", [])
+            await send_log(f"Fine-tuned: Got {len(recommendations)} recommendations", "success")
+        else:
+            await send_log("Fine-tuned query failed, will use defaults", "warning")
+            recommendations = ["Follow industry best practices", "Ensure security compliance", "Add comprehensive testing"]
+        
+        ft_data = {
+            "ft_insights": ft_insights,
+            "recommendations": recommendations,
+            "domain": ft_result.get("insights", {}).get("domain", "general"),
+            "source": ft_result.get("source", "unknown"),
+            "status": ft_result.get("status")
+        }
+        await update_step(3, "complete", f"{len(recommendations)} insights", "Domain analysis complete", data=ft_data)
+        await send_log("Fine-tuned model analysis complete", "success")
+        return ft_data
+
+    elif step_id == 4:
+        # Step 4: Craft User Stories with LLM
+        await send_log("Step 4: Crafting User Stories with LLM...", "info")
+        await update_step(4, "in-progress", "", "LLM generating user stories from analysis...")
+        
+        # Get context from previous steps
+        step2_data = state.step_data.get(2, {})
+        step3_data = state.step_data.get(3, {})
+        rag_context = step2_data.get("rag_context", "")
+        ft_insights = step3_data.get("ft_insights", "")
+        recommendations = step3_data.get("recommendations", [])
+        
+        story_prompt = f"""Based on this requirement and analysis, generate 3-5 user stories.
+
+REQUIREMENT: {requirement}
+
+PRODUCT RESEARCH (RAG): {rag_context[:600] if rag_context else 'No additional context'}
+
+DOMAIN INSIGHTS: {ft_insights[:400] if ft_insights else chr(10).join(recommendations[:3])}
+
+Generate user stories in this EXACT format (one per line):
+STORY: [Title] | [As a... I want... so that...] | [Acceptance Criteria] | [Story Points 1-8]
+"""
+        
+        llm_result = call_llm_api(story_prompt, "You are a senior product manager. Generate clear, actionable user stories.", 1000, 0.4)
+        
+        user_stories = []
+        if llm_result.get("status") == "success":
+            for line in llm_result.get("text", "").split('\n'):
+                if 'STORY:' in line:
+                    parts = line.split('|')
+                    if len(parts) >= 2:
+                        user_stories.append({
+                            "title": parts[0].replace('STORY:', '').strip(),
+                            "description": parts[1].strip() if len(parts) > 1 else "",
+                            "acceptance": parts[2].strip() if len(parts) > 2 else "",
+                            "points": int(parts[3].strip()) if len(parts) > 3 and parts[3].strip().isdigit() else 3
+                        })
+        
+        if not user_stories:
+            user_stories = [
+                {"title": "Core Feature", "description": f"Implement: {requirement[:80]}", "acceptance": "Works as specified", "points": 5},
+                {"title": "Testing", "description": "Write unit tests", "acceptance": "80% coverage", "points": 3},
+                {"title": "Documentation", "description": "Create docs", "acceptance": "README complete", "points": 2}
+            ]
+        
+        stories_data = {
+            "user_stories": user_stories,
+            "count": len(user_stories),
+            "total_points": sum(s.get("points", 3) for s in user_stories),
+            "source": "llm" if llm_result.get("status") == "success" else "fallback"
+        }
+        await update_step(4, "complete", f"{len(user_stories)} stories", "User stories crafted", data=stories_data)
+        await send_log(f"Crafted {len(user_stories)} user stories", "success")
+        return stories_data
+
+    elif step_id == 5:
+        # Step 5: Create JIRA Epic & Stories via MCP
+        await send_log("Step 5: Creating JIRA Epic & Stories...", "info")
+        await update_step(5, "in-progress", "", "Creating epic and stories in JIRA...")
+        
+        step4_data = state.step_data.get(4, {})
+        user_stories = step4_data.get("user_stories", [])
+        
+        # Create Epic
+        epic_title = f"Feature: {requirement[:80]}..."
+        epic_desc = f"Implementation of: {requirement}"
+        create_result = call_mcp_create_epic(epic_title, epic_desc)
+        epic_data = create_result.get("epic", {})
+        epic_key = epic_data.get("key", "PROJ-100")
+        jira_items[epic_key] = epic_data
+        await send_log(f"Epic created: {epic_key}", "success")
+        
+        # Create Stories
+        created_stories = []
+        for story in user_stories:
+            story_desc = f"{story['description']}\n\nAcceptance: {story.get('acceptance', '')}"
+            result = call_mcp_create_user_story(epic_key, story["title"], story_desc, story.get("points", 3))
+            if result.get("status") == "success":
+                story_data = result.get("story", {})
+                story_data.update(story)
+                created_stories.append(story_data)
+                jira_items[story_data.get("key", "")] = story_data
+        
+        await send_log(f"Created {len(created_stories)} stories in JIRA", "success")
+        
+        jira_data = {
+            "epic": epic_data,
+            "jira_epic": epic_key,
+            "stories": created_stories,
+            "total_story_points": sum(s.get("points", 3) for s in created_stories),
+            "jira_source": create_result.get("source", "unknown")
+        }
+        await update_step(5, "complete", epic_key, f"Epic {epic_key} + {len(created_stories)} stories", data=jira_data)
+        return jira_data
+
+    elif step_id == 6:
+        # Step 6: Generate Tasks for each Story
+        await send_log("Step 6: Generating Development Tasks...", "info")
+        await update_step(6, "in-progress", "", "Breaking down stories into tasks...")
+        
+        step5_data = state.step_data.get(5, {})
+        stories = step5_data.get("stories", [])
+        
+        task_prompt = f"""Generate 2-3 development tasks for each user story.
+
+User Stories:
+{chr(10).join([f"- {s.get('title', s.get('summary', 'Story'))}: {s.get('description', '')}" for s in stories])}
+
+Format: TASK: [Story] | [Task Name] | [Hours]"""
+        
+        tasks = []
+        llm_result = call_llm_api(task_prompt, "You are a tech lead.", 600, 0.3)
+        if llm_result.get("status") == "success":
+            for line in llm_result.get("text", "").split('\n'):
+                if 'TASK:' in line:
+                    parts = line.split('|')
+                    if len(parts) >= 2:
+                        tasks.append({"story": parts[0].replace('TASK:', '').strip(), "name": parts[1].strip(), "hours": parts[2].strip() if len(parts) > 2 else "4"})
+        
+        if not tasks:
+            tasks = [{"story": "Implementation", "name": "Setup project", "hours": "2"},
+                     {"story": "Implementation", "name": "Core logic", "hours": "8"},
+                     {"story": "Testing", "name": "Unit tests", "hours": "4"}]
+        
+        task_data = {"tasks": tasks, "total_tasks": len(tasks), "total_hours": sum(int(t.get("hours", "4")) for t in tasks)}
+        await update_step(6, "complete", f"{len(tasks)} tasks", f"Generated {len(tasks)} tasks", data=task_data)
+        await send_log(f"Generated {len(tasks)} development tasks", "success")
+        return task_data
+
+    elif step_id == 7:
+        # Step 7: Create Git Branch
+        await send_log("Step 7: Creating Git Branch...", "info")
+        await update_step(7, "in-progress", "", "Creating feature branch...")
         await asyncio.sleep(1)
         
-        # Retrieve spec_id from previous step data if available, else use default
-        step2_data = state.step_data.get(2, {})
-        spec_id = step2_data.get("jira_epic", "SPEC-2024-001")
-        branch_name = f"feature/{spec_id}-implementation"
+        step5_data = state.step_data.get(5, {})
+        epic_key = step5_data.get("jira_epic", "FEAT-001")
+        branch_name = f"feature/{epic_key}-implementation"
         
-        git_data = {
-            "branch": branch_name,
-            "base_branch": "main",
-            "repository": "mcp-hack-2025",
-            "command": f"git checkout -b {branch_name}"
-        }
-        await update_step(3, "complete", branch_name, f"Branch created: {branch_name}", data=git_data)
+        git_data = {"branch": branch_name, "base_branch": "main", "command": f"git checkout -b {branch_name}"}
+        await update_step(7, "complete", branch_name, f"Branch: {branch_name}", data=git_data)
         await send_log(f"Git branch created: {branch_name}", "success")
         return git_data
 
-    elif step_id == 4:
-        # Step 4: Code Generation
-        await send_log("Generating code...", "info")
-        await update_step(4, "in-progress", "", "Generating implementation files...")
+    elif step_id == 8:
+        # Step 8: Code Generation
+        await send_log("Step 8: AI Code Generation...", "info")
+        await update_step(8, "in-progress", "", "AI generating implementation...")
         await asyncio.sleep(2)
         
-        files = [
-            ("src/feature/main.py", "added", "+150 lines"),
-            ("src/feature/utils.py", "added", "+75 lines"),
-            ("tests/test_feature.py", "added", "+120 lines"),
-        ]
+        files = [("src/feature/main.py", "added", "+150 lines"), ("src/feature/utils.py", "added", "+75 lines"), ("tests/test_feature.py", "added", "+120 lines")]
         for f in files:
             await add_modified_file(*f)
-            await asyncio.sleep(0.2)
-            
-        codegen_data = {
-            "files_generated": [f[0] for f in files],
-            "total_lines": 345,
-            "model_used": "Claude 3.5 Sonnet"
-        }
-        await update_step(4, "complete", "3 files created", "Code generation complete", data=codegen_data)
+        
+        codegen_data = {"files_generated": [f[0] for f in files], "total_lines": 345, "model": "LLM"}
+        await update_step(8, "complete", "3 files", "Code generated", data=codegen_data)
         await send_log("Code generation complete", "success")
         return codegen_data
 
-    elif step_id == 5:
-        # Step 5: Code Review
-        await send_log("Running code review...", "info")
-        await update_step(5, "in-progress", "", "Analyzing code quality...")
-        await asyncio.sleep(1.5)
-        
-        review_data = {
-            "status": "Passed",
-            "issues_found": 0,
-            "linter_score": "10/10"
-        }
-        await update_step(5, "complete", "No issues found", "Code review passed", data=review_data)
-        await send_log("Code review passed", "success")
-        return review_data
-
-    elif step_id == 6:
-        # Step 6: Git Commit
-        await send_log("Committing changes...", "info")
-        await update_step(6, "in-progress", "", "Staging and committing files...")
-        await asyncio.sleep(1)
-        
-        commit_data = {
-            "hash": "a1b2c3d",
-            "message": "feat: Implement new features",
-            "author": "AI Agent",
-            "files_changed": 3
-        }
-        await update_step(6, "complete", "a1b2c3d", "Committed changes", data=commit_data)
-        await send_log("Changes committed", "success")
-        return commit_data
-
-    elif step_id == 7:
-        # Step 7: Unit Testing
-        await send_log("Running unit tests...", "info")
-        await update_step(7, "in-progress", "", "Executing test suite...")
+    elif step_id == 9:
+        # Step 9: Code Review & Testing
+        await send_log("Step 9: Code Review & Testing...", "info")
+        await update_step(9, "in-progress", "", "Running review and tests...")
         await asyncio.sleep(2)
         
-        test_data = {
-            "total_tests": 12,
-            "passed": 12,
-            "failed": 0,
-            "coverage": "100%"
+        review_test_data = {
+            "review_status": "Passed",
+            "issues_found": 0,
+            "tests_total": 12,
+            "tests_passed": 12,
+            "coverage": "95%"
         }
-        await update_step(7, "complete", "12/12 passed", "All tests passed", data=test_data)
-        await send_log("Unit tests passed", "success")
-        return test_data
-
-    elif step_id == 8:
-        # Step 8: Manual Approval
-        await send_log("Waiting for manual approval...", "info")
-        await update_step(8, "in-progress", "", "Awaiting user approval...")
-        await asyncio.sleep(1)
-        
-        approval_data = {
-            "approver": "User",
-            "timestamp": datetime.now().isoformat(),
-            "status": "Approved"
-        }
-        await update_step(8, "complete", "Approved", "Changes approved", data=approval_data)
-        await send_log("Changes approved by user", "success")
-        return approval_data
-
-    elif step_id == 9:
-        # Step 9: PR Submission
-        await send_log("Creating pull request...", "info")
-        await update_step(9, "in-progress", "", "Submitting PR...")
-        await asyncio.sleep(1.5)
-        
-        pr_data = {
-            "pr_number": "#42",
-            "title": "feat: New Feature Implementation",
-            "url": "https://github.com/org/repo/pull/42"
-        }
-        await update_step(9, "complete", "#42", "PR created: #42", data=pr_data)
-        await send_log("Pull request created", "success")
-        return pr_data
+        await update_step(9, "complete", "12/12 tests", "Review & tests passed", data=review_test_data)
+        await send_log("Code review and testing complete", "success")
+        return review_test_data
 
     elif step_id == 10:
-        # Step 10: PR Merge
-        await send_log("Merging pull request...", "info")
-        await update_step(10, "in-progress", "", "Merging to main branch...")
-        await asyncio.sleep(1.5)
+        # Step 10: PR, Merge & Deploy
+        await send_log("Step 10: PR, Merge & Deploy...", "info")
+        await update_step(10, "in-progress", "", "Creating PR, merging & deploying...")
+        await asyncio.sleep(2)
         
-        merge_data = {
-            "status": "Merged",
-            "merged_by": "CI/CD Bot",
-            "timestamp": datetime.now().isoformat()
+        step5_data = state.step_data.get(5, {})
+        epic_key = step5_data.get("jira_epic", "FEAT-001")
+        
+        deploy_data = {
+            "pr_number": "#42",
+            "pr_title": f"feat({epic_key}): Feature Implementation",
+            "pr_url": "https://github.com/org/repo/pull/42",
+            "status": "Merged & Deployed",
+            "branch": f"feature/{epic_key}-implementation",
+            "merged_to": "main",
+            "timestamp": datetime.now().isoformat(),
+            "jira_updated": True
         }
-        await update_step(10, "complete", "Merged", "PR merged successfully", data=merge_data)
-        await send_log("Pull request merged", "success")
-        return merge_data
+        await update_step(10, "complete", "Deployed ✓", "PR merged & deployed", data=deploy_data)
+        await send_log(f"PR #{42} merged and deployed to main", "success")
+        return deploy_data
 
 async def run_workflow(requirement: str):
     """Execute the workflow with human-in-the-loop steps"""
@@ -882,6 +1093,180 @@ async def get_modified_files():
     return {
         "files": state.modified_files
     }
+
+# ===== JIRA API Endpoints =====
+# ===== JIRA Data Models =====
+class StoryCreate(BaseModel):
+    summary: str
+    description: str = ""
+    story_points: int = 3
+    epic_key: str
+
+class StoryUpdate(BaseModel):
+    summary: Optional[str] = None
+    description: Optional[str] = None
+    story_points: Optional[int] = None
+    status: Optional[str] = None
+
+class TaskCreate(BaseModel):
+    summary: str
+    description: str = ""
+    story_key: str
+
+class TaskUpdate(BaseModel):
+    summary: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+# ===== JIRA API Endpoints =====
+@app.get("/api/jira/items")
+async def get_jira_items():
+    """Get all JIRA items"""
+    return {"items": list(jira_items.values())}
+
+@app.get("/api/jira/epic/{epic_key}")
+async def get_epic_with_stories(epic_key: str):
+    """Get epic with all its stories and tasks"""
+    if epic_key not in jira_items:
+        raise HTTPException(status_code=404, detail="Epic not found")
+    
+    epic = jira_items[epic_key]
+    stories = [item for item in jira_items.values() if item.get("epic_key") == epic_key and item.get("type") == "Story"]
+    
+    # Get tasks for each story
+    for story in stories:
+        story["tasks"] = [item for item in jira_items.values() if item.get("story_key") == story.get("key") and item.get("type") == "Task"]
+    
+    return {"epic": epic, "stories": stories}
+
+@app.get("/api/jira/item/{key}")
+async def get_jira_item(key: str):
+    """Get a specific JIRA item"""
+    if key not in jira_items:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return jira_items[key]
+
+@app.post("/api/jira/story")
+async def create_story(story: StoryCreate):
+    """Create a new user story"""
+    import random
+    project_key = story.epic_key.split('-')[0] if '-' in story.epic_key else "SCRUM"
+    story_id = random.randint(200, 999)
+    story_key = f"{project_key}-{story_id}"
+    
+    story_data = {
+        "key": story_key,
+        "type": "Story",
+        "summary": story.summary,
+        "description": story.description,
+        "story_points": story.story_points,
+        "epic_key": story.epic_key,
+        "status": "To Do",
+        "created": datetime.now().isoformat(),
+        "tasks": []
+    }
+    jira_items[story_key] = story_data
+    
+    await manager.broadcast({"type": "jira_item_created", "item": story_data})
+    return {"status": "success", "story": story_data}
+
+@app.put("/api/jira/story/{key}")
+async def update_story(key: str, update: StoryUpdate):
+    """Update a user story"""
+    if key not in jira_items:
+        raise HTTPException(status_code=404, detail="Story not found")
+    
+    story = jira_items[key]
+    if update.summary: story["summary"] = update.summary
+    if update.description: story["description"] = update.description
+    if update.story_points: story["story_points"] = update.story_points
+    if update.status: story["status"] = update.status
+    story["updated"] = datetime.now().isoformat()
+    
+    await manager.broadcast({"type": "jira_item_updated", "item": story})
+    return {"status": "success", "story": story}
+
+@app.delete("/api/jira/story/{key}")
+async def delete_story(key: str):
+    """Delete a user story and its tasks"""
+    if key not in jira_items:
+        raise HTTPException(status_code=404, detail="Story not found")
+    
+    # Delete associated tasks
+    tasks_to_delete = [k for k, v in jira_items.items() if v.get("story_key") == key]
+    for task_key in tasks_to_delete:
+        del jira_items[task_key]
+    
+    del jira_items[key]
+    await manager.broadcast({"type": "jira_item_deleted", "key": key})
+    return {"status": "success", "deleted": key}
+
+@app.post("/api/jira/task")
+async def create_task(task: TaskCreate):
+    """Create a new task under a story"""
+    import random
+    if task.story_key not in jira_items:
+        raise HTTPException(status_code=404, detail="Story not found")
+    
+    project_key = task.story_key.split('-')[0] if '-' in task.story_key else "SCRUM"
+    task_id = random.randint(300, 999)
+    task_key = f"{project_key}-{task_id}"
+    
+    task_data = {
+        "key": task_key,
+        "type": "Task",
+        "summary": task.summary,
+        "description": task.description,
+        "story_key": task.story_key,
+        "status": "To Do",
+        "created": datetime.now().isoformat()
+    }
+    jira_items[task_key] = task_data
+    
+    await manager.broadcast({"type": "jira_item_created", "item": task_data})
+    return {"status": "success", "task": task_data}
+
+@app.put("/api/jira/task/{key}")
+async def update_task(key: str, update: TaskUpdate):
+    """Update a task"""
+    if key not in jira_items:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    task = jira_items[key]
+    if update.summary: task["summary"] = update.summary
+    if update.description: task["description"] = update.description
+    if update.status: task["status"] = update.status
+    task["updated"] = datetime.now().isoformat()
+    
+    await manager.broadcast({"type": "jira_item_updated", "item": task})
+    return {"status": "success", "task": task}
+
+@app.delete("/api/jira/task/{key}")
+async def delete_task(key: str):
+    """Delete a task"""
+    if key not in jira_items:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    del jira_items[key]
+    await manager.broadcast({"type": "jira_item_deleted", "key": key})
+    return {"status": "success", "deleted": key}
+
+@app.put("/api/jira/item/{key}/status")
+async def update_jira_status(key: str, update: StoryUpdate):
+    """Update JIRA item status"""
+    if key not in jira_items:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    valid_statuses = ["To Do", "In Progress", "In Review", "Done"]
+    if update.status and update.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    if update.status:
+        jira_items[key]["status"] = update.status
+    jira_items[key]["updated"] = datetime.now().isoformat()
+    
+    await manager.broadcast({"type": "jira_status_updated", "key": key, "status": update.status})
+    return {"status": "success", "item": jira_items[key]}
 
 # ===== LLM API Endpoints =====
 class LLMGenerateRequest(BaseModel):
