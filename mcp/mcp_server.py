@@ -69,44 +69,84 @@ def use_real_jira() -> bool:
     return bool(config.JIRA_URL and config.JIRA_EMAIL and config.JIRA_API_TOKEN)
 
 # ===== RAG Functions =====
-def query_rag(requirement: str) -> Dict:
+def query_rag(requirement: str, rag_source: str = "auto") -> Dict:
     """
-    Query the RAG system for product specifications based on the requirement.
+    Query the dual RAG system for product specifications based on the requirement.
+    
+    Args:
+        requirement: User's requirement text
+        rag_source: Source to query - "auto", "existing", "design", or "both"
     """
     print(f"[RAG] Querying with requirement: {requirement[:50]}...")
+    print(f"[RAG] Source: {rag_source}")
     
     if config.RAG_ENABLED and config.RAG_API_URL:
         try:
             import requests
-            print(f"[RAG] Calling remote endpoint: {config.RAG_API_URL}")
+            
+            # Use /retrieve endpoint for dual RAG
+            api_url = config.RAG_API_URL.rstrip('/')
+            if not api_url.endswith('/retrieve'):
+                api_url = f"{api_url}/retrieve"
+            
+            print(f"[RAG] Calling dual RAG endpoint: {api_url}")
             
             response = requests.post(
-                config.RAG_API_URL,
-                json={"question": requirement, "top_k": 5},
+                api_url,
+                json={
+                    "question": requirement, 
+                    "source": rag_source,
+                    "top_k": 5
+                },
                 headers={"Content-Type": "application/json"},
                 timeout=180  # Increased to 3 minutes for cold starts
             )
             
             if response.ok:
                 result = response.json()
-                answer = result.get("answer", "")
-                sources = result.get("sources", [])
+                documents = result.get("documents", [])
+                sources_queried = result.get("sources_queried", [])
+                detected_source = result.get("detected_source", "unknown")
+                retrieval_time = result.get("retrieval_time", 0)
                 
-                # Parse the answer to extract structured fields if possible
-                # For now, we'll wrap the answer in our standard structure
+                # Build context from retrieved documents
+                context_parts = []
+                source_files = []
+                for doc in documents:
+                    content = doc.get("content", "")
+                    metadata = doc.get("metadata", {})
+                    filename = metadata.get("filename", metadata.get("source", "Unknown"))
+                    collection = metadata.get("collection", "unknown")
+                    
+                    context_parts.append(f"[{collection}] {filename}:\n{content}")
+                    source_files.append({"filename": filename, "collection": collection})
+                
+                full_context = "\n\n".join(context_parts)
+                
+                # Parse context to extract features
+                features = []
+                for line in full_context.split('\n'):
+                    line = line.strip()
+                    if line.startswith(('-', '*', '•')):
+                        features.append(line.lstrip('-*• '))
+                
                 return {
                     "status": "success",
                     "specification": {
-                        "title": "Product Specification (RAG Generated)",
-                        "summary": (answer[:200] + "...") if len(answer) > 200 else answer,
-                        "features": [line.strip('- *') for line in answer.split('\n') if line.strip().startswith(('-', '*'))] or [answer],
-                        "technical_requirements": ["Derived from product design docs"],
-                        "acceptance_criteria": ["See detailed RAG answer"],
+                        "title": "Product Specification (Dual RAG)",
+                        "summary": (full_context[:300] + "...") if len(full_context) > 300 else full_context,
+                        "features": features[:10] if features else ["See full context for details"],
+                        "technical_requirements": ["Derived from dual RAG sources"],
+                        "acceptance_criteria": ["See detailed context"],
                         "estimated_effort": "TBD",
-                        "full_answer": answer,
-                        "context_retrieved": len(sources)
+                        "full_answer": full_context,
+                        "context_retrieved": len(documents)
                     },
-                    "source": "real_rag",
+                    "source": "dual_rag",
+                    "sources_queried": sources_queried,
+                    "detected_source": detected_source,
+                    "source_files": source_files,
+                    "retrieval_time": retrieval_time,
                     "timestamp": datetime.now().isoformat()
                 }
             else:
@@ -116,9 +156,6 @@ def query_rag(requirement: str) -> Dict:
             
     # Mock response fallback
     print("[RAG] Using mock response")
-    
-    # Simulate processing time
-    # time.sleep(1)
     
     # Simple keyword matching for mock data
     req_lower = requirement.lower()
@@ -158,8 +195,12 @@ def query_rag(requirement: str) -> Dict:
         "status": "success",
         "specification": spec,
         "source": "mock_rag",
+        "sources_queried": ["mock"],
+        "detected_source": "mock",
+        "source_files": [],
         "timestamp": datetime.now().isoformat()
     }
+
 
 # ===== Fine-tuning Functions =====
 def query_finetuned_model(requirement: str, domain: str = "general") -> Dict:

@@ -68,27 +68,50 @@ python mcp_server.py
 
 ---
 
-## 🚀 Step 1.5: Deploy RAG System (Optional)
+## 🚀 Step 1.5: Deploy RAG System (Optional but Recommended)
 
-To enable real RAG capabilities instead of mock data, deploy the RAG system on Modal.
+The RAG system provides two data sources for intelligent context retrieval.
 
-### 1. Deploy the RAG App
+### Option A: Deploy Dual-Source RAG (Recommended) ⭐
+
+**Step 1: Index Existing Products (Insurance PDFs)**
 ```bash
-cd ..  # Go back to root if in mcp/
-./venv/bin/modal deploy src/rag/modal-rag-product-design.py
+cd /Users/veeru/agents/mcp-hack
+./venv/bin/modal run src/rag/rag_existing_products.py
+```
+This indexes PDFs from `aig/`, `metlife/`, `sonpo/`, `japan_post/` folders.
+
+**Step 2: Index Product Design Documents**
+```bash
+./venv/bin/modal run src/rag/rag_product_design.py
+```
+This indexes `.docx` and `.xlsx` files from the `docs/` folder.
+
+**Step 3: Deploy the Dual Query API**
+```bash
+./venv/bin/modal deploy src/rag/rag_dual_query.py
 ```
 
-### 2. Get the URL
-After deployment, you will see a URL ending in `...-api-query.modal.run`.
-Copy this URL and add it to your `mcp/.env` file as `RAG_API_URL`.
+**Step 4: Get the URL**
+After deployment, copy the URL ending in `.modal.run` and add to `mcp/.env`:
+```env
+RAG_API_URL="https://your-modal-url.modal.run"
+```
 
 **To retrieve the URL later**:
 ```bash
 ./venv/bin/modal app list
 ```
-Look for `insurance-rag-product-design` and note the endpoint URL.
+Look for `insurance-rag-dual-query`.
+
+### Option B: Deploy Legacy Single-Source RAG
+
+```bash
+./venv/bin/modal deploy src/rag/modal-rag-product-design.py
+```
 
 ---
+
 
 ## 🚀 Step 1.6: Deploy Fine-Tuned Model (Optional)
 
@@ -267,5 +290,11 @@ git push hf main
 ⚠️ **Limitations**:
 - Only the MCP Server (`mcp/mcp_server.py`) will be deployed
 - The Dashboard requires a separate deployment (use Render, Railway, or Fly.io)
+
+⚠️ **kill a process**:
+```bash
+lsof -ti :7860 | xargs kill -9
+lsof -ti :8000 | xargs kill -9
+```
 
 ✅ **Your Space is now live and accessible to anyone!**

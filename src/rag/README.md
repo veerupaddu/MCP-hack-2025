@@ -4,144 +4,188 @@ This directory contains all components for the RAG system that powers intelligen
 
 ## 📁 Directory Overview
 
-The RAG system consists of production-ready components:
+The RAG system consists of **two data sources** for comprehensive context:
 
-- **Production API** (`rag_api.py`) - Fast FastAPI endpoint for Modal deployment ⭐
-- **Product Design RAG** (`modal-rag-product-design.py`) - Document indexing and querying ⭐
-- **Client Library** (`api_client.py`) - Python client for API interaction
-- **Documentation** (`README.md`) - This file
-- **Package** (`__init__.py`) - Python package configuration
+### 🔷 Core Files
 
-**Note**: Legacy/alternative implementations have been moved to `bkp/rag/` for reference.
+| File | Purpose | Collection |
+|------|---------|------------|
+| `rag_existing_products.py` | Index insurance PDFs | `existing_products` |
+| `rag_product_design.py` | Index design docs | `product_design` |
+| `rag_dual_query.py` | **Query both sources** ⭐ | Both |
+
+### 📂 Data Sources
+
+| Collection | Source Folders | File Types |
+|------------|----------------|------------|
+| `existing_products` | `aig/`, `metlife/`, `sonpo/`, `japan_post/` | PDFs |
+| `product_design` | `docs/` | DOCX, XLSX |
+
+> **Note**: Legacy implementations moved to `bkp/rag/` for reference.
+
 
 ---
 
-## 🚀 Core Files (Priority: HIGH)
+## 🚀 Quick Start
 
-### 1. `rag_api.py` ⭐ **[PRODUCTION]**
-
-**Purpose**: Fast FastAPI endpoint optimized for sub-3 second responses
-
-**Key Features**:
-- **Dual Collection Retrieval**: Queries both `product_design` (Word/Excel docs) and `insurance_products` (PDFs)
-- **Performance Optimizations**:
-  - Warm containers (`min_containers=1`)
-  - Fast scaledown (`scaledown_window=60s`)
-  - Prefix caching for repeated queries
-  - GPU memory optimization (`gpu_memory_utilization=0.85`)
-  - Concurrent request handling
-- **FastAPI Endpoints**:
-  - `POST /query` - Query the RAG system
-  - `GET /health` - Health check
-
-**Usage**:
+### Step 1: Index Existing Products (Insurance PDFs)
 ```bash
-# Deploy to Modal
-modal deploy src/rag/rag_api.py
+cd /Users/veeru/agents/mcp-hack
+./venv/bin/modal run src/rag/rag_existing_products.py
+```
 
-# Check deployment status
-modal app list
+### Step 2: Index Product Design Documents
+```bash
+./venv/bin/modal run src/rag/rag_product_design.py
+```
 
-# Query via API
-curl -X POST https://your-modal-url/query \
+### Step 3: Deploy Dual Query API
+```bash
+./venv/bin/modal deploy src/rag/rag_dual_query.py
+```
+
+### Step 4: Test the API
+```bash
+# Query with intelligent routing (auto-detects source)
+curl -X POST https://your-modal-url/retrieve \
   -H "Content-Type: application/json" \
-  -d '{"question": "What are the product features?", "top_k": 5}'
+  -d '{"question": "What are TokyoDrive pricing tiers?"}'
+
+# Query existing products only
+curl -X POST https://your-modal-url/query/existing \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What does MetLife offer?"}'
+
+# Query product design only
+curl -X POST https://your-modal-url/query/design \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What coverage does TokyoDrive have?"}'
 ```
-
-**Configuration**:
-- `LLM_MODEL`: `microsoft/Phi-3-mini-4k-instruct`
-- `EMBEDDING_MODEL`: `BAAI/bge-small-en-v1.5`
-- `top_k`: 5 (split 3:2 between collections)
-- `max_tokens`: 1024
-- Response time: **<3 seconds** (warm) / ~10s (cold start)
-
-**Collections**:
-- `product_design`: TokyoDrive product design documents (.docx, .xlsx)
-- `insurance_products`: Insurance PDFs (MetLife, competitor analysis, etc.)
 
 ---
 
-### 2. `modal-rag-product-design.py` ⭐ **[INDEXING & QUERY]**
+## 🔍 Intelligent Routing
 
-**Purpose**: Extended RAG system for indexing and querying product design documents
+The dual query API automatically routes queries based on keywords:
 
-**Key Features**:
-- **Document Loading**: Supports Word (.docx), PDF (.pdf), Excel (.xlsx/.xls)
-- **Excludes**: All markdown files (`.md`)
-- **Indexing**: Creates embeddings and stores in ChromaDB
-- **Query**: Retrieves relevant context and generates answers using vLLM
+**→ Existing Products**: "existing", "current", "competitor", "metlife", "aig", "sonpo", "market", "compare"
+
+**→ Product Design**: "tokyodrive", "new product", "our product", "design", "specification", "pricing tier", "coverage", "feature"
+
+**→ Both Sources**: When no clear signal, queries both collections
+
+---
+
+## 📦 File Details
+
+### `rag_existing_products.py` 📄 **[INDEX INSURANCE PDFs]**
+
+**Purpose**: Index all insurance company PDFs into `existing_products` collection
+
+**Source Folders**:
+- `/insurance-data/aig/`
+- `/insurance-data/metlife/`
+- `/insurance-data/sonpo/`
+- `/insurance-data/japan_post/`
 
 **Usage**:
 ```bash
-# Index documents (run once or when docs change)
-modal run src/rag/modal-rag-product-design.py::index_product_design
+# List available PDF files
+modal run src/rag/rag_existing_products.py::list_existing_product_files
 
-# Query the system
-modal run src/rag/modal-rag-product-design.py::query_product_design \
-  --query "What are the pricing tiers?"
-
-# List indexed files
-modal run src/rag/modal-rag-product-design.py::list_volume_files
+# Run full indexing
+modal run src/rag/rag_existing_products.py
 ```
-
-**Document Processing**:
-- **Word (.docx)**: Extracts text from paragraphs and tables
-- **PDF (.pdf)**: Extracts text using pypdf
-- **Excel (.xlsx/.xls)**: Converts sheets to text format
-- **Text Splitting**: 1000 char chunks with 200 char overlap
-
-**Storage**:
-- Modal Volume: `mcp-hack-ins-products`
-- ChromaDB Collection: `product_design`
-- Location: `/insurance-data/chroma_db/`
 
 ---
 
-### 3. `api_client.py` 📦 **[CLIENT LIBRARY]**
+### `rag_product_design.py` 📝 **[INDEX DESIGN DOCS]**
 
-**Purpose**: Python client for interacting with the RAG API
+**Purpose**: Index product design documents into `product_design` collection
+
+**Source Folders**:
+- `/insurance-data/docs/`
+- `/insurance-data/docs/product-design/`
+
+**Supported Formats**: `.docx`, `.xlsx`, `.xls`
 
 **Usage**:
-```python
-from src.rag.api_client import RAGAPIClient
+```bash
+# List available design files
+modal run src/rag/rag_product_design.py::list_product_design_files
 
-# Initialize client
-client = RAGAPIClient(base_url="https://your-modal-url")
-
-# Health check
-health = client.health_check()
-print(health)  # {"status": "healthy", ...}
-
-# Query the RAG
-result = client.query(
-    question="What are the product features?",
-    top_k=5,
-    max_tokens=1024,
-    timeout=5
-)
-
-print(result["answer"])
-print(result["sources"])
-print(result["timing"])
+# Run full indexing
+modal run src/rag/rag_product_design.py
 ```
 
-**Methods**:
-- `health_check()` - Check API status
-- `query(question, top_k, max_tokens, timeout)` - Query the RAG system
+---
+
+### `rag_dual_query.py` ⭐ **[DUAL QUERY API]**
+
+**Purpose**: FastAPI endpoint that queries both collections with intelligent routing
+
+**Endpoints**:
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | API info |
+| `/health` | GET | Health check |
+| `/retrieve` | POST | Auto-route query |
+| `/query/existing` | POST | Query existing products |
+| `/query/design` | POST | Query product design |
+| `/query/both` | POST | Query both sources |
+
+**Request Format**:
+```json
+{
+  "question": "What are the pricing tiers?",
+  "source": "auto",  // "auto", "existing", "design", "both"
+  "top_k": 3
+}
+```
+
+**Response Format**:
+```json
+{
+  "documents": [...],
+  "sources_queried": ["existing_products", "product_design"],
+  "detected_source": "both",
+  "retrieval_time": 0.234,
+  "success": true
+}
+```
 
 ---
 
+## � Troubleshooting
+
+### Check Modal Apps
+```bash
+./venv/bin/modal app list
+```
+
+### View Volume Contents
+```bash
+./venv/bin/modal volume ls mcp-hack-ins-products
+```
+
+### Check Collection Status
+After indexing, each collection should show document counts in the logs.
+
 ---
 
-## 📦 Archived Files
+## 📁 Legacy Files
 
-Legacy and alternative implementations have been moved to `bkp/rag/` for reference:
+Legacy implementations have been moved to `bkp/rag/`:
+- `rag_api.py` - Original single-source API
+- `modal-rag-product-design.py` - Original indexing script
+- `rag_api_fast.py` - Fast API variant
+- `api_client.py` - Python client library
+- `rag_service.py` - Standalone Flask service
+- `rag_vllm.py` - Optimized vLLM implementation
+- `modal-rag.py` - Original base RAG system
+- `inspect_rag_docs.py` - ChromaDB inspection tool
+- `debug_chroma.py` - Quick health check utility
 
-- **`rag_service.py`** - Standalone Flask service (for Nebius/Docker)
-- **`rag_vllm.py`** - Optimized vLLM implementation
-- **`modal-rag.py`** - Original base RAG system
-- **`inspect_rag_docs.py`** - ChromaDB inspection tool
-- **`debug_chroma.py`** - Quick health check utility
 
 These files are kept as backups but are not actively used in production. If you need them, they can be restored from `bkp/rag/`.
 
