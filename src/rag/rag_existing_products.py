@@ -27,7 +27,7 @@ SOURCE_FOLDERS = [
     "/insurance-data/japan_post"
 ]
 
-# Build image
+# Build image with pdfminer.six for proper Japanese text extraction
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
@@ -39,9 +39,9 @@ image = (
         "langchain-community>=0.0.13",
         "langchain-text-splitters>=0.2.0",
         "langchain-core>=0.1.0",
-        "langchain-huggingface>=0.0.3",  # New HuggingFace integration
+        "langchain-huggingface>=0.0.3",
         "chromadb>=0.4.0",
-        "pypdf>=4.0.0",
+        "pdfminer.six>=20231228",  # Better Japanese text extraction
         "cryptography>=3.1",  # For AES-encrypted PDFs
     )
 )
@@ -72,13 +72,14 @@ def list_existing_product_files():
 
 @app.function(image=image, volumes={"/insurance-data": vol}, timeout=600)
 def load_existing_products():
-    """Load all existing insurance product PDFs"""
+    """Load all existing insurance product PDFs using pdfminer for proper Japanese text"""
     import os
-    from pypdf import PdfReader
+    from pdfminer.high_level import extract_text
+    from pdfminer.pdfparser import PDFSyntaxError
     
     documents = []
     
-    print("📚 Loading existing insurance product PDFs...")
+    print("📚 Loading existing insurance product PDFs (with Japanese support)...")
     
     for folder in SOURCE_FOLDERS:
         if not os.path.exists(folder):
@@ -96,18 +97,17 @@ def load_existing_products():
             full_path = os.path.join(folder, file)
             
             try:
-                reader = PdfReader(full_path)
-                text_content = []
+                # Use pdfminer.six for proper Japanese text extraction
+                full_text = extract_text(full_path)
                 
-                for page in reader.pages:
-                    page_text = page.extract_text()
-                    if page_text:
-                        text_content.append(page_text)
-                
-                full_text = '\n'.join(text_content)
-                
-                if not full_text.strip():
+                if not full_text or not full_text.strip():
                     print(f"  ⚠️ No text extracted: {file}")
+                    continue
+                
+                # Check if text contains valid Japanese or English
+                has_valid_text = any(ord(c) > 127 or c.isalpha() for c in full_text[:1000])
+                if not has_valid_text:
+                    print(f"  ⚠️ No valid text found: {file}")
                     continue
                 
                 documents.append({
@@ -117,11 +117,14 @@ def load_existing_products():
                         'filename': file,
                         'company': company,
                         'type': 'existing_product',
-                        'format': 'pdf'
+                        'format': 'pdf',
+                        'language': 'ja'  # Mark as Japanese
                     }
                 })
                 print(f"  ✅ {file} ({len(full_text):,} chars)")
                 
+            except PDFSyntaxError as e:
+                print(f"  ❌ PDF syntax error {file}: {e}")
             except Exception as e:
                 print(f"  ❌ Error loading {file}: {e}")
     

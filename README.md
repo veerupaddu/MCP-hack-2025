@@ -12,63 +12,78 @@ license: mit
 
 # 🤖 AI Development Agent MCP Server
 
-AI-powered Software Development Lifecycle agent with JIRA integration, RAG capabilities, and fine-tuned model support.
+AI-powered Software Development Lifecycle agent with JIRA integration, dual RAG system, and fine-tuned model support for insurance product design.
+
+## 📁 Project Structure
+
+```
+mcp-hack/
+├── app.py                    # HuggingFace Spaces entry point
+├── mcp/                      # MCP Server (Gradio)
+│   └── mcp_server.py
+├── agent/                    # User Story Agent
+│   ├── api.py, user_story_agent.py
+│   └── index.html
+├── dashboard/                # Dashboard UI
+│   ├── server.py
+│   └── index.html, app.js, style.css
+├── src/
+│   ├── rag/                  # Dual RAG System
+│   │   ├── rag_dual_query.py        # Query API ⭐
+│   │   ├── rag_existing_products.py # PDF indexer
+│   │   └── rag_product_design.py    # DOCX indexer
+│   └── finetune/             # Fine-tuning
+│       ├── api_endpoint_vllm.py     # Inference API ⭐
+│       └── finetune_modal.py
+├── docs/                     # Documentation
+└── diagrams/                 # Architecture diagrams
+```
 
 ## ✨ Features
 
 - **🎯 JIRA Integration**: Create and search epics, create user stories
-- **🧠 RAG System**: Query product design documents using retrieval-augmented generation  
-- **🔥 Fine-tuned Models**: Specialized AI models for domain-specific queries
+- **🧠 Dual RAG System**: Query both existing products (PDFs) and new product design (DOCX)
+- **🔥 Fine-tuned Models**: Specialized AI for insurance product design
 - **📊 Mock Mode**: Works without credentials for demonstration
 
 ## 🔧 Configuration
 
-This Space uses environment variables (configure in **Settings → Repository secrets**):
+Configure in **Settings → Repository secrets**:
 
-### JIRA Configuration (Optional - uses mock if not provided)
-- `JIRA_URL`: Your JIRA instance URL (e.g., `https://your-domain.atlassian.net`)
-- `JIRA_EMAIL`: Your JIRA email
-- `JIRA_API_TOKEN`: Your JIRA API token ([How to get](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/))
-- `JIRA_PROJECT_KEY`: Default project key (e.g., `SCRUM`)
+### JIRA (Optional)
+- `JIRA_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY`
 
-### RAG System Configuration (Optional)
-- `RAG_ENABLED`: Set to `true` to enable RAG system
-- `RAG_API_URL`: RAG API endpoint URL (e.g., Modal deployment URL)
+### Dual RAG System
+- `RAG_ENABLED=true`
+- `RAG_API_URL=https://mcp-hack--insurance-rag-dual-query-fastapi-app.modal.run`
 
-### Fine-tuned Model Configuration (Optional)
-- `FINETUNED_MODEL_API_URL`: Fine-tuned model API endpoint
-- `FINETUNED_MODEL_TYPE`: Model type (`general`, `insurance`, `finance`, etc.)
+### Fine-tuned Model
+- `FINETUNED_MODEL_API_URL`: vLLM endpoint URL
+- `FINETUNED_MODEL_TYPE=insurance`
 
-## 🚀 Usage
+## 🚀 Quick Start
 
-### Without Configuration (Mock Mode)
-The app works out of the box in mock mode - perfect for testing and demos!
+```bash
+# Deploy RAG (dual source)
+./venv/bin/modal run src/rag/rag_existing_products.py
+./venv/bin/modal run src/rag/rag_product_design.py
+./venv/bin/modal deploy src/rag/rag_dual_query.py
 
-### With JIRA Integration
-1. Go to **Settings** tab in your HuggingFace Space
-2. Add the environment variables listed above
-3. Restart the Space
-4. You'll now have real JIRA integration!
-
-### With RAG System
-1. Deploy your RAG system (e.g., using Modal)
-2. Get the API endpoint URL
-3. Set `RAG_ENABLED=true` and `RAG_API_URL=<your-url>`
-4. Restart the Space
+# Deploy Fine-tuned Model
+./venv/bin/modal deploy src/finetune/api_endpoint_vllm.py
+```
 
 ## 📖 Tabs
 
-- **RAG Query**: Query product specifications from documents
-- **Fine-tuned Model**: Get domain-specific insights
-- **JIRA - Search Epics**: Find existing epics by keywords
-- **JIRA - Create Epic**: Create new epics
-- **JIRA - Create User Story**: Create user stories under epics
-- **Configuration**: View current configuration
+- **RAG Query**: Query product specs from dual sources
+- **Fine-tuned Model**: Insurance domain insights
+- **JIRA**: Search/create epics and user stories
+- **Configuration**: View current settings
 
 ## 🔗 Links
 
 - [GitHub Repository](https://github.com/veerupaddu/MCP-hack-2025)
-- [Documentation](https://github.com/veerupaddu/MCP-hack-2025/tree/main/docs)
+- [Documentation](docs/)
 
 ## 📝 License
 

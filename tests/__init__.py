@@ -1,4 +1,0 @@
-"""
-Test files for the application
-"""
-

@@ -1,148 +1,92 @@
-# Repository Structure
+# 📁 Project Structure
 
-This document describes the organization of the repository.
-
-## Directory Layout
+Clean, simplified structure for the MCP SDLC Agent.
 
 ```
 mcp-hack/
-├── src/                          # Core application source code
-│   ├── rag/                      # RAG (Retrieval Augmented Generation) system
-│   │   ├── modal-rag.py                    # Main RAG system for insurance products
-│   │   └── modal-rag-product-design.py     # Product design document RAG
-│   └── web/                      # Web application
-│       ├── web_app.py                       # Flask web server
-│       ├── query_product_design.py          # RAG query CLI interface
-│       ├── templates/                       # HTML templates
-│       │   └── index.html
-│       └── static/                          # Static assets
-│           ├── css/
-│           │   └── style.css
-│           └── js/
-│               └── app.js
 │
-├── scripts/                       # Utility scripts organized by purpose
-│   ├── data/                     # Data processing scripts
-│   │   ├── download_*.py         # Data download scripts
-│   │   ├── convert_*.py          # Data conversion scripts
-│   │   ├── prepare_*.py          # Data preparation scripts
-│   │   └── cleanup_*.py          # Data cleanup scripts
-│   ├── setup/                    # Setup and installation scripts
-│   │   ├── start_web.sh          # Start web application
-│   │   └── run_with_venv.sh      # Run scripts with venv
-│   └── tools/                     # General utility scripts
-│       ├── api_endpoint*.py       # API endpoint scripts
-│       ├── finetune_*.py          # Fine-tuning scripts
-│       └── debug_*.py             # Debugging utilities
+├── app.py                          # HuggingFace Spaces entry point
+├── README.md                       # Main documentation
+├── README_HF.md                    # HuggingFace specific readme
+├── requirements.txt                # Root dependencies
 │
-├── docs/                         # Documentation
-│   ├── guides/                   # How-to guides and tutorials
-│   │   ├── QUICK_START_RAG.md
-│   │   ├── WEB_INTERFACE.md
-│   │   ├── TROUBLESHOOTING.md
-│   │   └── ...                   # Other guides
-│   ├── api/                      # API documentation (if any)
-│   └── product-design/           # Product design documents
-│       ├── tokyo_auto_insurance_product_design.md
-│       ├── tokyo_auto_insurance_product_design_filled.md
-│       ├── tokyo_auto_insurance_product_design.docx
-│       ├── PRODUCT_DECISION_GUIDE.md
-│       └── setup_product_design_rag.md
+├── mcp/                            # 🎯 MCP Server (Gradio/HuggingFace)
+│   ├── mcp_server.py               # Main Gradio server with all tools
+│   ├── requirements.txt            # MCP dependencies
+│   └── .env.example                # Environment template
 │
-├── tests/                         # Test files
-│   ├── test_server.py
-│   └── test_web.py
+├── agent/                          # 🤖 User Story Agent
+│   ├── api.py                      # FastAPI server (port 8001)
+│   ├── user_story_agent.py         # Agent logic with RAG + LLM
+│   ├── index.html                  # Web UI
+│   └── API.md                      # API documentation
 │
-├── diagrams/                      # System architecture diagrams
-│   ├── *.mmd                      # Mermaid diagram sources
-│   └── *.svg                      # Rendered diagrams
+├── dashboard/                      # 📊 Dashboard UI
+│   ├── server.py                   # Backend server (port 8000)
+│   ├── index.html                  # Main dashboard
+│   ├── app.js                      # Frontend logic
+│   ├── style.css                   # Styling
+│   └── requirements.txt            # Dashboard dependencies
 │
-├── finetune/                      # Model fine-tuning documentation
-│   ├── README.md
-│   └── *.md                       # Fine-tuning guides
+├── src/
+│   ├── rag/                        # 🧠 Dual RAG System
+│   │   ├── rag_dual_query.py       # Query API (Modal deployment) ⭐
+│   │   ├── rag_existing_products.py # Index insurance PDFs
+│   │   ├── rag_product_design.py   # Index design DOCX/XLSX
+│   │   └── README.md               # RAG documentation
+│   │
+│   └── finetune/                   # 🔥 Fine-tuning
+│       ├── api_endpoint_vllm.py    # vLLM inference API ⭐
+│       ├── finetune_modal.py       # Training script
+│       ├── prepare_finetune_data.py # Dataset preparation
+│       ├── eval_finetuned.py       # Model evaluation
+│       └── merge_model.py          # LoRA merge utility
 │
-├── bkp/                           # Backup files (old versions)
+├── docs/                           # 📖 Documentation
+│   ├── HOW_TO_RUN.md               # Complete setup guide
+│   ├── QUICK_START.md              # Quick start guide
+│   ├── STRUCTURE.md                # This file
+│   └── product-design/             # Product design docs
 │
-├── config/                        # Configuration files (if any)
-│
-├── venv/                          # Python virtual environment (gitignored)
-│
-├── README.md                      # Main project README
-├── MIGRATION_GUIDE.md            # Guide for migrating from old structure
-├── STRUCTURE.md                   # This file
-└── .gitignore                    # Git ignore rules
+└── diagrams/                       # 📐 Architecture diagrams
+    ├── rag-finetune-system.svg     # System overview
+    ├── 1-indexing-flow.svg         # RAG indexing flow
+    ├── 2-query-flow.svg            # Query flow
+    └── finetuning.svg              # Fine-tuning flow
 ```
 
-## Key Directories
+## 🔧 Key Components
 
-### `src/`
-Contains all core application code. Organized into:
-- **`rag/`**: RAG system implementations using Modal
-- **`web/`**: Web application (Flask) with templates and static assets
+| Component | Port | Purpose |
+|-----------|------|---------|
+| `mcp/mcp_server.py` | 7860 | HuggingFace Gradio server |
+| `agent/api.py` | 8001 | User Story Agent API |
+| `dashboard/server.py` | 8000 | Dashboard backend |
+| `src/rag/rag_dual_query.py` | Modal | Dual RAG query API |
+| `src/finetune/api_endpoint_vllm.py` | Modal | Fine-tuned model API |
 
-### `scripts/`
-Utility scripts organized by purpose:
-- **`data/`**: Data processing, downloading, conversion
-- **`setup/`**: Installation and setup scripts
-- **`tools/`**: General utilities, API endpoints, debugging tools
+## 🚀 Deployment
 
-### `docs/`
-Documentation organized by type:
-- **`guides/`**: How-to guides and tutorials
-- **`api/`**: API documentation
-- **`product-design/`**: Product design documents
-
-### `tests/`
-All test files for the application.
-
-## File Naming Conventions
-
-- Python scripts: `snake_case.py`
-- Documentation: `UPPER_CASE.md` or `kebab-case.md`
-- Shell scripts: `kebab-case.sh`
-- Config files: `.config` or `config.json`
-
-## Import Paths
-
-When importing from this repository:
-
-```python
-# From root directory
-import sys
-sys.path.insert(0, 'src/web')
-from query_product_design import query_rag
-
-# Or add src to path
-sys.path.insert(0, 'src')
-from rag.modal_rag_product_design import ...
-```
-
-## Running Applications
-
-### Web Application
+### Modal (Cloud)
 ```bash
-# From project root
-python src/web/web_app.py
+# RAG System
+./venv/bin/modal deploy src/rag/rag_dual_query.py
 
-# Or use helper script
-./scripts/setup/start_web.sh
+# Fine-tuned Model
+./venv/bin/modal deploy src/finetune/api_endpoint_vllm.py
 ```
 
-### RAG Queries
+### HuggingFace Spaces
+Push to HuggingFace - `app.py` auto-starts on port 7860.
+
+### Local Development
 ```bash
-# CLI
-python src/web/query_product_design.py --question "your question"
+# Dashboard
+python dashboard/server.py
 
-# Modal direct
-modal run src/rag/modal-rag-product-design.py::query_product_design --question "your question"
+# Agent API
+python agent/api.py
+
+# MCP Server
+python mcp/mcp_server.py
 ```
-
-## Adding New Files
-
-When adding new files, follow the structure:
-- **Application code** → `src/`
-- **Utility scripts** → `scripts/{data,setup,tools}/`
-- **Documentation** → `docs/{guides,api,product-design}/`
-- **Tests** → `tests/`
-- **Config** → `config/`
-
