@@ -73,6 +73,28 @@ Configure in **Settings → Repository secrets**:
 ./venv/bin/modal deploy src/finetune/api_endpoint_vllm.py
 ```
 
+## 💻 Local Development
+
+### 1. Run Dashboard (Frontend)
+```bash
+cd dashboard
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python server.py
+# 🌐 http://localhost:8000
+```
+
+### 2. Run Agent API
+```bash
+cd agent
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python api.py
+# 🔌 http://localhost:8001
+```
+
 ## 📖 Tabs
 
 - **RAG Query**: Query product specs from dual sources
