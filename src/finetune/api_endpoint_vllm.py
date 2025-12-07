@@ -81,16 +81,8 @@ class Model:
         question = data.get('question', '')
         context = data.get('context', 'Context: Japan Census data.')
         
-        prompt = f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
-
-### Instruction:
-{question}
-
-### Input:
-{context}
-
-### Response:
-"""
+        # Phi-3 Chat Format
+        prompt = f"<|user|>\n{question}\n\nContext:\n{context}<|end|>\n<|assistant|>"
         
         request_id = str(uuid.uuid4())
         results_generator = self.engine.generate(prompt, self.sampling_params, request_id)
@@ -103,10 +95,8 @@ class Model:
         text_output = final_output.outputs[0].text.strip()
         
         # Clean up response
-        if "### Response:\n" in text_output:
-            answer = text_output.split("### Response:\n")[1].strip()
-        else:
-            answer = text_output
+        # Clean up response (vLLM usually returns just the generated part, but we check)
+        answer = text_output.replace(prompt, "").strip()
             
         latency = time.time() - start_time
         
