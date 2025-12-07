@@ -7,7 +7,7 @@ __pycache__/
 venv/
 env/
 ENV/
-.venv
+.venv/
 
 # IDE
 .vscode/
@@ -30,7 +30,34 @@ htmlcov/
 # Modal
 .modal/
 
-# Environment variables
+# Environment variables & Secrets
 .env
 .env.local
+.env.*
+!.env.example
 mcp/.env
+dashboard/.env
+agent/.env
+
+# Data & Models (Large files)
+data/
+models/
+checkpoints/
+*.pt
+*.pth
+*.bin
+*.gguf
+*.safetensors
+*.h5
+
+# RAG Data
+src/data/
+insurance-data/
+
+# Node/JS (if any)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Hugging Face
+.huggingface/
