@@ -40,6 +40,45 @@
             opacity: 0.9;
         }
 
+        /* Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+            opacity: 0.7;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            opacity: 1;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
         .card {
             background: white;
             border-radius: 12px;
@@ -118,6 +157,21 @@
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         }
 
         .loading {
@@ -158,6 +212,73 @@
             display: block;
         }
 
+        /* Spec Styles */
+        .spec-container {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .spec-header {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .spec-status {
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-draft {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .spec-body {
+            padding: 1.5rem;
+        }
+
+        .spec-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .spec-section h3 {
+            font-size: 1rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .spec-section ul {
+            list-style-position: inside;
+            color: #4a5568;
+        }
+
+        .spec-section li {
+            margin-bottom: 0.25rem;
+        }
+
+        .spec-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        /* Story Styles */
         .story {
             background: #f8fafc;
             border-left: 4px solid #667eea;
@@ -266,156 +387,12 @@
             font-size: 0.9rem;
         }
 
-        .metadata p {
-            margin: 0.5rem 0;
-        }
-
         .warning {
             background: #fef3c7;
             border-left: 4px solid #f59e0b;
             padding: 1rem;
             border-radius: 8px;
             margin-bottom: 1rem;
-        }
-
-        .expandable-section {
-            margin-bottom: 1.5rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .expandable-header {
-            background: #f8fafc;
-            padding: 1rem;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background 0.2s;
-            user-select: none;
-        }
-
-        .expandable-header:hover {
-            background: #f1f5f9;
-        }
-
-        .expandable-header h3 {
-            margin: 0;
-            font-size: 1rem;
-            color: #1a202c;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .expandable-icon {
-            font-size: 1.2rem;
-            transition: transform 0.3s;
-        }
-
-        .expandable-icon.open {
-            transform: rotate(180deg);
-        }
-
-        .expandable-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-        }
-
-        .expandable-content.open {
-            max-height: 1000px;
-            transition: max-height 0.5s ease-in;
-        }
-
-        .expandable-body {
-            padding: 1rem;
-            background: white;
-        }
-
-        .source-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 0.75rem;
-            background: #f8fafc;
-            border-radius: 6px;
-            margin-bottom: 0.75rem;
-        }
-
-        .source-icon {
-            font-size: 1.5rem;
-            flex-shrink: 0;
-        }
-
-        .source-details h4 {
-            margin: 0 0 0.25rem 0;
-            font-size: 0.9rem;
-            color: #667eea;
-        }
-
-        .source-details p {
-            margin: 0;
-            font-size: 0.85rem;
-            color: #64748b;
-        }
-
-        .file-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem;
-            background: #f0f9ff;
-            border-left: 3px solid #3b82f6;
-            border-radius: 6px;
-            margin-bottom: 0.5rem;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 0.85rem;
-        }
-
-        .thought-step {
-            padding: 1rem;
-            background: #f9fafb;
-            border-left: 3px solid #10b981;
-            border-radius: 6px;
-            margin-bottom: 1rem;
-        }
-
-        .thought-step h4 {
-            margin: 0 0 0.5rem 0;
-            font-size: 0.9rem;
-            color: #10b981;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .thought-step p {
-            margin: 0;
-            color: #374151;
-            line-height: 1.6;
-        }
-
-        .toggle-all {
-            text-align: right;
-            margin-bottom: 1rem;
-        }
-
-        .toggle-all button {
-            background: none;
-            border: 1px solid #667eea;
-            color: #667eea;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-
-        .toggle-all button:hover {
-            background: #667eea;
-            color: white;
         }
     </style>
 </head>
@@ -427,184 +404,305 @@
             <p>Alex - Senior Product Owner & Business Analyst</p>
         </div>
 
-        <div class="card">
-            <form id="storyForm">
-                <div class="form-group">
-                    <label for="query">Enter your requirement:</label>
-                    <textarea id="query" name="query" rows="4"
-                        placeholder="Example: I need a feature for customers to file auto insurance claims online with photo uploads..."
-                        required></textarea>
-                </div>
-
-                <div class="options">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="useRag" name="use_rag" checked>
-                        <label for="useRag" style="margin: 0;">Use RAG (Knowledge Base)</label>
-                    </div>
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="useFinetuned" name="use_finetuned" checked>
-                        <label for="useFinetuned" style="margin: 0;">Use Fine-tuned Model</label>
-                    </div>
-                </div>
-
-                <div class="rag-sources" id="ragSources"
-                    style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #667eea;">RAG Sources:</div>
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="ragExisting" name="rag_existing" checked>
-                        <label for="ragExisting" style="margin: 0; font-size: 0.9rem;">📄 Existing Products
-                            (PDFs)</label>
-                    </div>
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="ragDesign" name="rag_design" checked>
-                        <label for="ragDesign" style="margin: 0; font-size: 0.9rem;">📝 Product Design (DOCX)</label>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn" id="submitBtn">
-                    Generate User Stories
-                </button>
-            </form>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('spec')">Product Spec Workflow</button>
+            <button class="tab-btn" onclick="switchTab('direct')">Direct Story Generation</button>
         </div>
 
-
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Alex is analyzing your requirement and generating user stories...</p>
-        </div>
-
-        <div class="results card" id="results">
-            <h2 style="margin-bottom: 1.5rem;">Generated User Stories</h2>
-
-            <div class="toggle-all">
-                <button onclick="toggleAllSections()">Expand/Collapse All Details</button>
+        <!-- PRODUCT SPEC WORKFLOW TAB -->
+        <div id="spec-tab" class="tab-content active">
+            <div class="card" id="spec-input-card">
+                <form id="specForm">
+                    <div class="form-group">
+                        <label for="specQuery">Product Requirement:</label>
+                        <textarea id="specQuery" rows="4"
+                            placeholder="Describe the product or feature you want to build..." required></textarea>
+                    </div>
+                    <div class="options">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="specRag" checked>
+                            <label for="specRag">Use RAG</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="specFinetuned" checked>
+                            <label for="specFinetuned">Use Fine-tuned Model</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn" id="createSpecBtn">Create Draft Spec</button>
+                </form>
             </div>
 
-            <!-- Expandable Sections -->
-            <div id="expandableSections"></div>
+            <div class="loading" id="specLoading">
+                <div class="spinner"></div>
+                <p id="specLoadingText">Generating Draft Specification...</p>
+            </div>
 
-            <div id="storiesContainer"></div>
-            <div id="metadataContainer"></div>
+            <div id="specResult" style="display: none;">
+                <!-- Spec Display -->
+                <div class="card">
+                    <div class="spec-container">
+                        <div class="spec-header">
+                            <h2 id="specTitle">Product Spec Title</h2>
+                            <span class="spec-status status-draft" id="specStatus">DRAFT</span>
+                        </div>
+                        <div class="spec-body">
+                            <div class="spec-section">
+                                <h3>Summary</h3>
+                                <p id="specSummary">...</p>
+                            </div>
+                            <div class="spec-section">
+                                <h3>Target Audience</h3>
+                                <p id="specAudience">...</p>
+                            </div>
+                            <div class="spec-section">
+                                <h3>Key Features</h3>
+                                <ul id="specFeatures"></ul>
+                            </div>
+                            <div class="spec-section">
+                                <h3>Technical Requirements</h3>
+                                <ul id="specTech"></ul>
+                            </div>
+                            <div class="spec-section">
+                                <h3>Success Metrics</h3>
+                                <ul id="specMetrics"></ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="spec-actions" id="specActions">
+                        <button class="btn btn-success" onclick="approveSpec()">Approve Spec</button>
+                        <button class="btn btn-secondary" onclick="resetSpec()">Discard & New</button>
+                    </div>
+
+                    <div class="spec-actions" id="generateActions" style="display: none;">
+                        <button class="btn" onclick="generateStoriesFromSpec()">Generate User Stories</button>
+                    </div>
+                </div>
+
+                <!-- Stories Result -->
+                <div id="specStoriesResult" class="card" style="display: none;">
+                    <h2>Generated User Stories</h2>
+                    <div id="specStoriesContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DIRECT GENERATION TAB (Legacy) -->
+        <div id="direct-tab" class="tab-content">
+            <div class="card">
+                <form id="storyForm">
+                    <div class="form-group">
+                        <label for="query">Enter your requirement:</label>
+                        <textarea id="query" rows="4"
+                            placeholder="Example: I need a feature for customers to file auto insurance claims online..."
+                            required></textarea>
+                    </div>
+                    <div class="options">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useRag" checked>
+                            <label for="useRag">Use RAG</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useFinetuned" checked>
+                            <label for="useFinetuned">Use Fine-tuned Model</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn" id="submitBtn">Generate User Stories</button>
+                </form>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Alex is analyzing your requirement...</p>
+            </div>
+
+            <div class="results card" id="results">
+                <h2>Generated User Stories</h2>
+                <div id="storiesContainer"></div>
+                <div id="metadataContainer"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        const form = document.getElementById('storyForm');
-        const loading = document.getElementById('loading');
-        const results = document.getElementById('results');
-        const submitBtn = document.getElementById('submitBtn');
-        const ragSources = document.getElementById('ragSources');
+        // State
+        let currentSpecId = null;
 
-        // Toggle RAG sources visibility based on RAG checkbox
-        document.getElementById('useRag').addEventListener('change', function () {
-            ragSources.style.display = this.checked ? 'flex' : 'none';
+        // Tabs
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            if (tab === 'spec') {
+                document.querySelector('.tab-btn:first-child').classList.add('active');
+                document.getElementById('spec-tab').classList.add('active');
+            } else {
+                document.querySelector('.tab-btn:last-child').classList.add('active');
+                document.getElementById('direct-tab').classList.add('active');
+            }
+        }
+
+        // ===== Product Spec Workflow =====
+
+        document.getElementById('specForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = document.getElementById('specQuery').value;
+            const useRag = document.getElementById('specRag').checked;
+            const useFinetuned = document.getElementById('specFinetuned').checked;
+
+            showSpecLoading(true, "Creating Draft Specification...");
+
+            try {
+                const res = await fetch('http://localhost:8001/api/specs/draft', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, use_rag: useRag, use_finetuned: useFinetuned })
+                });
+                const spec = await res.json();
+                currentSpecId = spec.spec_id;
+                renderSpec(spec);
+            } catch (err) {
+                alert('Error creating spec: ' + err.message);
+            } finally {
+                showSpecLoading(false);
+            }
         });
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        async function approveSpec() {
+            if (!currentSpecId) return;
 
+            showSpecLoading(true, "Approving Specification...");
+            try {
+                const res = await fetch(`http://localhost:8001/api/specs/${currentSpecId}/approve`, {
+                    method: 'POST'
+                });
+                const spec = await res.json();
+                renderSpec(spec);
+            } catch (err) {
+                alert('Error approving spec: ' + err.message);
+            } finally {
+                showSpecLoading(false);
+            }
+        }
+
+        async function generateStoriesFromSpec() {
+            if (!currentSpecId) return;
+
+            showSpecLoading(true, "Generating User Stories from Spec...");
+            try {
+                const res = await fetch(`http://localhost:8001/api/specs/${currentSpecId}/generate-stories`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                renderSpecStories(data.stories);
+            } catch (err) {
+                alert('Error generating stories: ' + err.message);
+            } finally {
+                showSpecLoading(false);
+            }
+        }
+
+        function renderSpec(spec) {
+            document.getElementById('spec-input-card').style.display = 'none';
+            document.getElementById('specResult').style.display = 'block';
+
+            document.getElementById('specTitle').textContent = spec.title;
+            document.getElementById('specStatus').textContent = spec.status.toUpperCase();
+            document.getElementById('specStatus').className = `spec-status status-${spec.status}`;
+
+            document.getElementById('specSummary').textContent = spec.summary;
+            document.getElementById('specAudience').textContent = spec.target_audience;
+
+            renderList('specFeatures', spec.key_features);
+            renderList('specTech', spec.technical_requirements);
+            renderList('specMetrics', spec.success_metrics);
+
+            if (spec.status === 'approved') {
+                document.getElementById('specActions').style.display = 'none';
+                document.getElementById('generateActions').style.display = 'flex';
+            } else {
+                document.getElementById('specActions').style.display = 'flex';
+                document.getElementById('generateActions').style.display = 'none';
+            }
+        }
+
+        function renderList(elementId, items) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = items.map(i => `<li>${i}</li>`).join('');
+        }
+
+        function renderSpecStories(stories) {
+            const container = document.getElementById('specStoriesContainer');
+            container.innerHTML = stories.map(renderStoryCard).join('');
+            document.getElementById('specStoriesResult').style.display = 'block';
+            container.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetSpec() {
+            currentSpecId = null;
+            document.getElementById('specResult').style.display = 'none';
+            document.getElementById('spec-input-card').style.display = 'block';
+            document.getElementById('specStoriesResult').style.display = 'none';
+            document.getElementById('specQuery').value = '';
+        }
+
+        function showSpecLoading(show, text) {
+            const loader = document.getElementById('specLoading');
+            if (show) {
+                loader.classList.add('active');
+                document.getElementById('specLoadingText').textContent = text;
+                document.getElementById('spec-input-card').style.display = 'none';
+            } else {
+                loader.classList.remove('active');
+            }
+        }
+
+        // ===== Direct Generation Workflow (Legacy) =====
+
+        document.getElementById('storyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
             const query = document.getElementById('query').value;
             const useRag = document.getElementById('useRag').checked;
             const useFinetuned = document.getElementById('useFinetuned').checked;
-            const ragExisting = document.getElementById('ragExisting').checked;
-            const ragDesign = document.getElementById('ragDesign').checked;
 
-            // Determine RAG source
-            let ragSource = 'auto';
-            if (useRag) {
-                if (ragExisting && ragDesign) ragSource = 'both';
-                else if (ragExisting) ragSource = 'existing';
-                else if (ragDesign) ragSource = 'design';
-                else ragSource = 'none';
-            }
-
-            // Show loading
-            loading.classList.add('active');
-            results.classList.remove('active');
-            submitBtn.disabled = true;
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('submitBtn').disabled = true;
 
             try {
-                const response = await fetch('http://localhost:8001/api/user-stories', {
+                const res = await fetch('http://localhost:8001/api/user-stories', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        query: query,
-                        use_rag: useRag,
-                        use_finetuned: useFinetuned,
-                        rag_source: ragSource
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, use_rag: useRag, use_finetuned: useFinetuned })
                 });
+                const data = await res.json();
 
-                const data = await response.json();
-
-                if (data.success) {
-                    displayResults(data);
-                } else {
-                    alert('Error generating user stories');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to connect to the API. Make sure the server is running on port 8001.');
+                document.getElementById('storiesContainer').innerHTML = data.stories.map(renderStoryCard).join('');
+                document.getElementById('metadataContainer').innerHTML = `
+                    <div class="metadata">
+                        <p><strong>Domain:</strong> ${data.domain}</p>
+                        <p><strong>Source:</strong> ${data.mcp_source}</p>
+                        <p><strong>Confidence:</strong> ${Math.round(data.confidence * 100)}%</p>
+                    </div>
+                `;
+                document.getElementById('results').classList.add('active');
+            } catch (err) {
+                alert('Error: ' + err.message);
             } finally {
-                loading.classList.remove('active');
-                submitBtn.disabled = false;
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('submitBtn').disabled = false;
             }
         });
 
-
-        function displayResults(data) {
-            const storiesContainer = document.getElementById('storiesContainer');
-            const metadataContainer = document.getElementById('metadataContainer');
-            const expandableSections = document.getElementById('expandableSections');
-
-            // Display expandable sections
-            let expandableHtml = '';
-
-            // 1. Sources Used Section
-            expandableHtml += createExpandableSection(
-                'sources',
-                '🔗 Sources & Data Retrieved',
-                generateSourcesContent(data)
-            );
-
-            // 2. Files & Context Section
-            expandableHtml += createExpandableSection(
-                'files',
-                '📁 Retrieved Files & Context',
-                generateFilesContent(data)
-            );
-
-            // 3. Thought Process Section
-            expandableHtml += createExpandableSection(
-                'thought',
-                '🧠 Agent Reasoning & Thought Process',
-                generateThoughtProcessContent(data)
-            );
-
-            expandableSections.innerHTML = expandableHtml;
-
-            // Display warnings if any
-            let warningsHtml = '';
-            if (data.warnings && data.warnings.length > 0) {
-                warningsHtml = `
-                    <div class="warning">
-                        <strong>⚠️ Warnings:</strong>
-                        <ul style="margin: 0.5rem 0 0 1.5rem;">
-                            ${data.warnings.map(w => `<li>${w}</li>`).join('')}
-                        </ul>
-                    </div>
-                `;
-            }
-
-            // Display stories
-            const storiesHtml = data.stories.map(story => `
+        // Helper
+        function renderStoryCard(story) {
+            return `
                 <div class="story">
                     <div class="story-header">
                         <span class="story-id">${story.story_id}</span>
                     </div>
                     <div class="story-title">${story.title}</div>
+                    ${story.description ? `<p style="margin-bottom: 1rem; color: #4a5568; line-height: 1.6;">${story.description}</p>` : ''}
                     <div class="story-format">
                         <strong>As a</strong> ${story.actor},<br>
                         <strong>I want</strong> ${story.action},<br>
@@ -616,6 +714,19 @@
                             ${story.acceptance_criteria.map(c => `<li>${c}</li>`).join('')}
                         </ul>
                     </div>
+                    ${story.tasks && story.tasks.length > 0 ? `
+                        <div class="criteria">
+                            <h4>Implementation Tasks</h4>
+                            <ul style="list-style: none; padding-left: 0;">
+                                ${story.tasks.map(t => `
+                                    <li style="display: flex; align-items: flex-start; gap: 0.5rem;">
+                                        <input type="checkbox" disabled>
+                                        <span>${t}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
                     ${story.technical_notes && story.technical_notes.length > 0 ? `
                         <div class="criteria">
                             <h4>Technical Notes</h4>
@@ -629,181 +740,10 @@
                         <span class="badge badge-priority-${story.priority.toLowerCase()}">${story.priority} Priority</span>
                     </div>
                 </div>
-            `).join('');
-
-            // Display metadata
-            const metadataHtml = `
-                <div class="metadata">
-                    <p><strong>Domain:</strong> ${data.domain}</p>
-                    <p><strong>MCP Source:</strong> ${data.mcp_source}</p>
-                    <p><strong>Confidence:</strong> ${Math.round(data.confidence * 100)}%</p>
-                    <p><strong>Total Stories:</strong> ${data.stories.length}</p>
-                </div>
             `;
-
-            storiesContainer.innerHTML = warningsHtml + storiesHtml;
-            metadataContainer.innerHTML = metadataHtml;
-            results.classList.add('active');
-
-            // Scroll to results
-            results.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function createExpandableSection(id, title, content) {
-            return `
-                <div class="expandable-section">
-                    <div class="expandable-header" onclick="toggleSection('${id}')">
-                        <h3><span>${title}</span></h3>
-                        <span class="expandable-icon" id="${id}-icon">▼</span>
-                    </div>
-                    <div class="expandable-content" id="${id}-content">
-                        <div class="expandable-body">
-                            ${content}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function toggleSection(id) {
-            const content = document.getElementById(`${id}-content`);
-            const icon = document.getElementById(`${id}-icon`);
-
-            content.classList.toggle('open');
-            icon.classList.toggle('open');
-        }
-
-        function toggleAllSections() {
-            const sections = ['sources', 'files', 'thought'];
-            const firstSection = document.getElementById('sources-content');
-            const shouldOpen = !firstSection.classList.contains('open');
-
-            sections.forEach(id => {
-                const content = document.getElementById(`${id}-content`);
-                const icon = document.getElementById(`${id}-icon`);
-
-                if (shouldOpen) {
-                    content.classList.add('open');
-                    icon.classList.add('open');
-                } else {
-                    content.classList.remove('open');
-                    icon.classList.remove('open');
-                }
-            });
-        }
-
-        function generateSourcesContent(data) {
-            const sources = [];
-
-            if (data.mcp_source.includes('RAG')) {
-                sources.push({
-                    icon: '🔍',
-                    name: 'RAG (Retrieval-Augmented Generation)',
-                    description: 'Retrieved relevant product specifications and design patterns from knowledge base'
-                });
-            }
-
-            if (data.mcp_source.includes('Fine-tuned')) {
-                sources.push({
-                    icon: '🧠',
-                    name: 'Fine-tuned Domain Model',
-                    description: 'Applied domain-specific knowledge from trained insurance model'
-                });
-            }
-
-            sources.push({
-                icon: '👤',
-                name: 'Alex (User Story Agent)',
-                description: 'Senior Product Owner persona applying INVEST principles and best practices'
-            });
-
-            return sources.map(source => `
-                <div class="source-item">
-                    <div class="source-icon">${source.icon}</div>
-                    <div class="source-details">
-                        <h4>${source.name}</h4>
-                        <p>${source.description}</p>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function generateFilesContent(data) {
-            // Show actual RAG collections that were queried
-            const ragExisting = document.getElementById('ragExisting').checked;
-            const ragDesign = document.getElementById('ragDesign').checked;
-
-            const files = [];
-
-            if (ragExisting) {
-                files.push({ name: 'existing_products', type: 'Existing Products Collection', icon: '📄', folder: 'aig/, metlife/, sonpo/, japan_post/' });
-            }
-
-            if (ragDesign) {
-                files.push({ name: 'product_design', type: 'Product Design Collection', icon: '📝', folder: 'docs/' });
-            }
-
-            if (!data.mcp_source || data.mcp_source === 'Fallback' || files.length === 0) {
-                return '<p style="color: #64748b;">No external files were retrieved. Stories generated using fallback logic.</p>';
-            }
-
-            return `
-                <p style="margin-bottom: 1rem; color: #64748b;">RAG Collections queried:</p>
-                ${files.map(file => `
-                    <div class="file-item">
-                        <span>${file.icon}</span>
-                        <span style="flex: 1;"><strong>${file.name}</strong><br><small style="color: #64748b;">${file.folder}</small></span>
-                        <span style="color: #667eea; font-size: 0.8rem;">${file.type}</span>
-                    </div>
-                `).join('')}
-                <p style="margin-top: 1rem; font-size: 0.85rem; color: #64748b;">
-                    Source files include: Insurance PDFs (AIG, MetLife, Sonpo, Japan Post) and Product Design documents (DOCX/XLSX)
-                </p>
-            `;
-        }
-
-        function generateThoughtProcessContent(data) {
-            const steps = [
-                {
-                    icon: '📝',
-                    title: 'Step 1: Requirement Analysis',
-                    description: `Analyzed the user query: "${data.raw_query.substring(0, 100)}${data.raw_query.length > 100 ? '...' : ''}"`
-                },
-                {
-                    icon: '🎯',
-                    title: 'Step 2: Actor Identification',
-                    description: `Identified primary actors: ${data.stories.map(s => s.actor).filter((v, i, a) => a.indexOf(v) === i).join(', ')}`
-                },
-                {
-                    icon: '🔍',
-                    title: 'Step 3: Context Retrieval',
-                    description: `Queried MCP sources: ${data.mcp_source}. Retrieved relevant product specifications and domain knowledge.`
-                },
-                {
-                    icon: '✍️',
-                    title: 'Step 4: Story Generation',
-                    description: `Generated ${data.stories.length} user stories following INVEST principles (Independent, Negotiable, Valuable, Estimable, Small, Testable)`
-                },
-                {
-                    icon: '✅',
-                    title: 'Step 5: Acceptance Criteria',
-                    description: 'Created testable acceptance criteria using Given-When-Then format for each story'
-                },
-                {
-                    icon: '📊',
-                    title: 'Step 6: Estimation & Prioritization',
-                    description: 'Applied story point estimation based on complexity and assigned priorities based on business value'
-                }
-            ];
-
-            return steps.map(step => `
-                <div class="thought-step">
-                    <h4><span>${step.icon}</span> ${step.title}</h4>
-                    <p>${step.description}</p>
-                </div>
-            `).join('');
         }
     </script>
 </body>
 
 </html>
+```

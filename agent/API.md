@@ -96,12 +96,66 @@ Generates structured user stories from a requirement.
 }
 ```
 
-### 4. Generate User Stories with Markdown
+### 4. Product Spec Workflow
+
+#### 4.1 Create Draft Spec
+```http
+POST /api/specs/draft
+```
+Creates a new draft product specification.
+
+**Request:**
+```json
+{
+  "query": "Design a mobile app for claims",
+  "use_rag": true
+}
+```
+
+**Response:**
+```json
+{
+  "spec_id": "3ca9cb13",
+  "title": "Product Spec: Design a mobile app...",
+  "status": "draft",
+  ...
+}
+```
+
+#### 4.2 List Specs
+```http
+GET /api/specs
+```
+Returns a list of all specs.
+
+#### 4.3 Get Spec
+```http
+GET /api/specs/{spec_id}
+```
+Returns full details of a spec.
+
+#### 4.4 Approve Spec
+```http
+POST /api/specs/{spec_id}/approve
+```
+Marks a spec as approved.
+
+#### 4.5 Generate Stories from Spec
+```http
+POST /api/specs/{spec_id}/generate-stories
+```
+Generates user stories based on an approved spec.
+
+### 5. Generate User Stories (Direct)
+```http
+POST /api/user-stories
+```
+Legacy endpoint for direct story generation.
+
+### 6. Generate User Stories with Markdown
 ```http
 POST /api/user-stories/markdown
 ```
-
-Same as above, but includes a `markdown` field with formatted documentation.
 
 ## Usage Examples
 

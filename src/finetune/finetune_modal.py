@@ -93,16 +93,8 @@ def finetune():
     print(f"✅ Loaded {len(dataset['validation'])} validation samples")
     
     # Alpaca prompt template
-    alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
-
-### Instruction:
-{}
-
-### Input:
-{}
-
-### Response:
-{}"""
+    # Phi-3 Chat Format Template
+    # <|user|>\n{instruction}\n\nContext:\n{input}<|end|>\n<|assistant|>\n{output}<|end|>
     
     EOS_TOKEN = tokenizer.eos_token
     
@@ -112,7 +104,8 @@ def finetune():
         outputs = examples["output"]
         texts = []
         for instruction, input_text, output in zip(instructions, inputs, outputs):
-            text = alpaca_prompt.format(instruction, input_text, output) + EOS_TOKEN
+            # Phi-3 Chat Format
+            text = f"<|user|>\n{instruction}\n\nContext:\n{input_text}<|end|>\n<|assistant|>\n{output}<|end|>"
             texts.append(text)
         return {"text": texts}
     

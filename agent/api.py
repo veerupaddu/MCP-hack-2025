@@ -8,12 +8,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict
 import uvicorn
 import os
 
-from user_story_agent import UserStoryAgent, UserStoryResponse
 
+from user_story_agent import UserStoryAgent, UserStoryResponse, ProductSpec
 
 # ===== Request/Response Models =====
 
@@ -35,6 +35,28 @@ class UserStoryRequest(BaseModel):
     )
 
 
+class ProductSpecRequest(BaseModel):
+    """Request model for product spec generation"""
+    query: str = Field(..., min_length=10)
+    use_rag: bool = True
+    use_finetuned: bool = True
+
+
+class ProductSpecOutput(BaseModel):
+    """Output model for product spec"""
+    spec_id: str
+    title: str
+    summary: str
+    status: str
+    created_at: str
+    target_audience: str
+    key_features: List[str]
+    technical_requirements: List[str]
+    success_metrics: List[str]
+    assumptions: List[str]
+    dependencies: List[str]
+
+
 class AcceptanceCriteria(BaseModel):
     """Acceptance criteria model"""
     criteria: str
@@ -44,10 +66,12 @@ class UserStoryOutput(BaseModel):
     """Output model for a single user story"""
     story_id: str
     title: str
+    description: str
     actor: str
     action: str
     benefit: str
     acceptance_criteria: List[str]
+    tasks: List[str]
     story_points: int
     priority: str
     technical_notes: List[str]
@@ -63,6 +87,7 @@ class UserStoryApiResponse(BaseModel):
     confidence: float
     warnings: List[str]
     markdown: Optional[str] = None
+    spec_id: Optional[str] = None
 
 
 # ===== FastAPI App =====
@@ -70,7 +95,7 @@ class UserStoryApiResponse(BaseModel):
 app = FastAPI(
     title="User Story Agent API",
     description="Transform user requirements into structured user stories using AI",
-    version="1.0.0",
+    version="1.2.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -96,10 +121,12 @@ def convert_to_api_response(response: UserStoryResponse, include_markdown: bool 
         UserStoryOutput(
             story_id=story.story_id,
             title=story.title,
+            description=story.description,
             actor=story.actor,
             action=story.action,
             benefit=story.benefit,
             acceptance_criteria=story.acceptance_criteria,
+            tasks=story.tasks,
             story_points=story.story_points,
             priority=story.priority,
             technical_notes=story.technical_notes
@@ -119,7 +146,8 @@ def convert_to_api_response(response: UserStoryResponse, include_markdown: bool 
         mcp_source=response.mcp_source,
         confidence=response.confidence,
         warnings=response.warnings,
-        markdown=markdown
+        markdown=markdown,
+        spec_id=response.spec_id
     )
 
 
@@ -138,7 +166,7 @@ async def root():
         <html>
             <body>
                 <h1>User Story Agent API</h1>
-                <p>API Version: 1.0.0</p>
+                <p>API Version: 1.1.0</p>
                 <p>Persona: Alex - Senior Product Owner & Business Analyst</p>
                 <p><a href="/docs">API Documentation</a></p>
             </body>
@@ -151,12 +179,13 @@ async def api_info():
     """Root endpoint with API information"""
     return {
         "name": "User Story Agent API",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "persona": agent.PERSONA_NAME,
         "role": agent.PERSONA_ROLE,
         "endpoints": {
             "generate": "POST /api/user-stories",
-            "generate_markdown": "POST /api/user-stories/markdown",
+            "specs_draft": "POST /api/specs/draft",
+            "specs_list": "GET /api/specs",
             "health": "GET /health"
         },
         "docs": "/docs"
@@ -175,61 +204,85 @@ async def health():
 
 @app.post("/api/user-stories", response_model=UserStoryApiResponse)
 async def generate_user_stories(request: UserStoryRequest):
-    """
-    Generate user stories from a requirement
-    
-    This endpoint transforms a user requirement into structured user stories
-    by querying the MCP server (RAG + Fine-tuned models) and applying
-    INVEST principles.
-    
-    **Returns:**
-    - Structured user stories with acceptance criteria
-    - Story points and priority
-    - Confidence score
-    - Technical notes
-    """
+    """Generate user stories from a requirement (Legacy/Direct mode)"""
     try:
-        # Generate user stories
         response = agent.transform_to_user_stories(
             request.query,
             use_rag=request.use_rag,
             use_finetuned=request.use_finetuned
         )
-        
-        # Convert to API response
         return convert_to_api_response(response, include_markdown=False)
-        
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error generating user stories: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 @app.post("/api/user-stories/markdown")
 async def generate_user_stories_markdown(request: UserStoryRequest):
-    """
-    Generate user stories and return as markdown
-    
-    Same as /api/user-stories but includes a formatted markdown document
-    of all the generated stories.
-    """
+    """Generate user stories and return as markdown"""
     try:
-        # Generate user stories
         response = agent.transform_to_user_stories(
             request.query,
             use_rag=request.use_rag,
             use_finetuned=request.use_finetuned
         )
-        
-        # Convert to API response with markdown
         return convert_to_api_response(response, include_markdown=True)
-        
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error generating user stories: {str(e)}"
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+# ===== Product Spec Endpoints =====
+
+@app.post("/api/specs/draft", response_model=ProductSpecOutput)
+async def create_draft_spec(request: ProductSpecRequest):
+    """Create a new draft product specification"""
+    try:
+        spec = agent.create_draft_spec(
+            request.query,
+            use_rag=request.use_rag,
+            use_finetuned=request.use_finetuned
         )
+        return ProductSpecOutput(**spec.to_dict())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating spec: {str(e)}")
+
+
+@app.get("/api/specs", response_model=List[Dict])
+async def list_specs():
+    """List all product specifications"""
+    try:
+        return agent.list_specs()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error listing specs: {str(e)}")
+
+
+@app.get("/api/specs/{spec_id}", response_model=ProductSpecOutput)
+async def get_spec(spec_id: str):
+    """Get a specific product specification"""
+    spec = agent.get_spec(spec_id)
+    if not spec:
+        raise HTTPException(status_code=404, detail="Spec not found")
+    return ProductSpecOutput(**spec.to_dict())
+
+
+@app.post("/api/specs/{spec_id}/approve", response_model=ProductSpecOutput)
+async def approve_spec(spec_id: str):
+    """Approve a product specification"""
+    spec = agent.approve_spec(spec_id)
+    if not spec:
+        raise HTTPException(status_code=404, detail="Spec not found")
+    return ProductSpecOutput(**spec.to_dict())
+
+
+@app.post("/api/specs/{spec_id}/generate-stories", response_model=UserStoryApiResponse)
+async def generate_stories_from_spec(spec_id: str):
+    """Generate user stories from an approved specification"""
+    try:
+        response = agent.generate_stories_from_spec(spec_id)
+        return convert_to_api_response(response, include_markdown=True)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating stories: {str(e)}")
 
 
 # ===== Main =====
