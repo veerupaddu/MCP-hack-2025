@@ -271,7 +271,7 @@ Use the provided context to ensure accuracy.
         
         # Generate stories based on spec features
         stories = []
-        for i, feature in enumerate(spec.key_features, 1):
+        for i, feature in enumerate(spec.key_features[:1], 1):
             # Get customized details based on feature type
             details = self._get_feature_details(feature, spec.target_audience.split(',')[0].strip())
             
@@ -741,51 +741,13 @@ Use the provided context to ensure accuracy.
             technical_notes=["Implement input validation", "Add error handling", "Ensure security"]
         ))
         
-        # Story 2: Admin/Management
-        if primary_actor != "administrator":
-            stories.append(UserStory(
-                story_id="US-002",
-                title=f"Admin Management for {user_query[:30]}",
-                description="Administrative capabilities are required to manage and monitor this feature. This includes configuration, oversight, and troubleshooting tools.",
-                actor="administrator",
-                action=f"manage and monitor {action_summary}",
-                benefit="I can maintain system integrity and user experience",
-                acceptance_criteria=[
-                    "GIVEN the administrator is logged in WHEN they access the management panel THEN all relevant data SHALL be displayed",
-                    "GIVEN the administrator modifies settings WHEN changes are saved THEN the system SHALL apply them immediately",
-                ],
-                tasks=[
-                    "Create admin dashboard widget",
-                    "Implement configuration API",
-                    "Add audit logging"
-                ],
-                story_points=3,
-                priority="Medium",
-                technical_notes=["Implement admin authorization", "Add audit logging"]
-            ))
+        # Story 2: Admin/Management (Disabled for single story request)
+        # if primary_actor != "administrator":
+        #     stories.append(UserStory(...))
         
         # Story 3: Error handling & edge cases
-        stories.append(UserStory(
-            story_id="US-003",
-            title="Error Handling and Validation",
-            description="Robust error handling is essential for a good user experience. The system must provide clear feedback when things go wrong.",
-            actor=primary_actor,
-            action="receive clear feedback when errors occur",
-            benefit="I understand what went wrong and how to fix it",
-            acceptance_criteria=[
-                "GIVEN invalid input WHEN submitted THEN the system SHALL display field-specific error messages",
-                "GIVEN a system error occurs WHEN processing THEN the user SHALL see a friendly error message",
-                "GIVEN the user fixes errors WHEN resubmitted THEN the system SHALL process successfully",
-            ],
-            tasks=[
-                "Define error codes and messages",
-                "Implement global error handler",
-                "Add client-side validation"
-            ],
-            story_points=2,
-            priority="High",
-            technical_notes=["Implement comprehensive validation", "Design user-friendly error messages"]
-        ))
+        # Story 3: Error handling & edge cases (Disabled for single story request)
+        # stories.append(UserStory(...))
         
         return stories
     

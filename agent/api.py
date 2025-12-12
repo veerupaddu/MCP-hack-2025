@@ -22,7 +22,7 @@ class UserStoryRequest(BaseModel):
     query: str = Field(
         ...,
         description="The user requirement to transform into user stories",
-        min_length=10,
+        min_length=3,
         example="I need a feature for customers to file auto insurance claims online"
     )
     use_rag: bool = Field(
@@ -37,7 +37,7 @@ class UserStoryRequest(BaseModel):
 
 class ProductSpecRequest(BaseModel):
     """Request model for product spec generation"""
-    query: str = Field(..., min_length=10)
+    query: str = Field(..., min_length=3)
     use_rag: bool = True
     use_finetuned: bool = True
 
