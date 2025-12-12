@@ -469,17 +469,21 @@ Use the provided context to ensure accuracy.
         title = f"Product Spec: {query[:30]}..."
         summary = f"Comprehensive specification for: {query}. Leveraging insights from existing products and design docs."
         
+        # Dynamic Feature Generation based on Query
+        # Extract potential nouns/subjects from query
+        words = [w for w in query.split() if len(w) > 3 and w.lower() not in ["want", "need", "make", "create", "build", "system", "app", "application", "tool"]]
+        subject = " ".join(words[:2]).title() if words else "System"
+        
         features = [
-            "User Authentication & Authorization",
-            "Dashboard & Overview",
-            "Core Workflow Implementation",
-            "Reporting & Analytics",
-            "Settings & Configuration"
+            f"{subject} Dashboard & Overview",
+            f"Manage {subject}",
+            f"{subject} Workflow",
+            f"{subject} Reporting"
         ]
         
         # Add RAG-specific features if available
         if "login" in query.lower() or "auth" in query.lower():
-            features.append("Multi-factor Authentication (MFA)")
+            features.insert(0, "Multi-factor Authentication (MFA)")
         
         return ProductSpec(
             spec_id=str(uuid.uuid4())[:8],
